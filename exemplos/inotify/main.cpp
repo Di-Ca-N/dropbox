@@ -44,7 +44,10 @@ int main() {
 
             // Percorre os eventos. É necessário fazer esse tratamento mais complexo ao invés de simplesmente
             // usar um array porque os eventos têm tamanho variável.
-            for (char *ptr = buffer; ptr < buffer + readBytes; ptr += ((inotify_event *)ptr)->len) {
+
+            char *ptr = buffer;
+
+            while (ptr < buffer + readBytes) {
                 inotify_event *event = (inotify_event*) ptr;
 
                 // Usa a máscara para diferenciar cada tipo de evento
@@ -59,6 +62,7 @@ int main() {
                 } else if (event->mask & IN_CLOSE_WRITE) {
                     std::cout << "File '" << event->name << "' was modified." << std::endl;
                 }
+                ptr += sizeof(inotify_event) + event->len;
             }
         }
     }
