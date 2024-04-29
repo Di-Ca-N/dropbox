@@ -44,7 +44,7 @@ void sendOk(int sock_fd) {
     sendOk(sock_fd, nullptr, 0);
 }
 
-void sendOk(int sock_fd, char* data, int dataLen) {
+void sendOk(int sock_fd, char* data, u_int16_t dataLen) {
     Message reply = {
         .type=MSG_OK,
         .len=dataLen,
@@ -77,6 +77,13 @@ void printMsg(Message *msg) {
     std::cout << "=== MESSAGE END ===\n";
 }
 
+int waitForOk(int sock_fd) {
+    Message reply;
+    if (readMessage(sock_fd, &reply) == -1 || reply.type != MSG_OK)
+        return -1;
+    return 0;
+}
+
 int sendAuthMsg(int sock_fd, std::string username) {
     Message msg = {
         .type=MSG_AUTH,
@@ -85,23 +92,62 @@ int sendAuthMsg(int sock_fd, std::string username) {
     username.copy(msg.payload, MAX_PAYLOAD);
 
     send(sock_fd, &msg, sizeof(msg), 0);
-    if (readMessage(sock_fd, &msg) == -1 || msg.type != MSG_OK)
-        return -1;
-    return 0;
+    return waitForOk(sock_fd);
 }
 
 int sendSyncMsg(int sock_fd) {
     Message msg = {.type=MSG_SYNC,.len=0};
+
     send(sock_fd, &msg, sizeof(msg), 0);
-    if (readMessage(sock_fd, &msg) == -1 || msg.type != MSG_OK)
-        return -1;
-    return 0;
+    return waitForOk(sock_fd);
 }
 
 int sendUploadMsg(int sock_fd) {
     Message msg = {.type=MSG_UPLOAD,.len=0};
+
     send(sock_fd, &msg, sizeof(msg), 0);
-    if (readMessage(sock_fd, &msg) == -1 || msg.type != MSG_OK)
-        return -1;
-    return 0;
+    return waitForOk(sock_fd);
+}
+
+int sendFile(int sock_fd, std::filesystem::path filePath) {
+    std::ifstream fileToUpload(filePath, std::ifstream::binary);
+    fileToUpload.seekg(0, fileToUpload.end);
+    std::streampos fileSize = fileToUpload.tellg();
+    fileToUpload.seekg(0, fileToUpload.beg);
+    std::string filename = filePath.filename().string();
+
+    unsigned int numBlocks = fileSize / MAX_PAYLOAD;
+    if (fileSize % MAX_PAYLOAD > 0) {
+        numBlocks++;
+    }
+
+    FileId payload = {
+        .totalBlocks=numBlocks,
+        .fileSize=static_cast<u_int64_t>(fileSize),
+        .filenameSize=static_cast<u_int8_t>(filename.size()+1),
+    };
+    filename.copy(payload.filename, MAX_FILENAME);
+
+    Message msg = {
+        .type=MSG_FILE_ID,
+        .len=sizeof(payload)
+    };
+    memcpy(msg.payload, &payload, sizeof(payload));
+
+    send(sock_fd, &msg, sizeof(msg), 0);
+
+    Message filePart = {.type=MSG_FILEPART};
+    for (int i = 0; i < numBlocks; i++) {
+        fileToUpload.read(filePart.payload, MAX_PAYLOAD);
+        filePart.len = fileToUpload.gcount();
+        //printMsg(&filePart);
+        int sent = send(sock_fd, &filePart, sizeof(filePart), 0);
+        //std::cout << "Sent " << sent << " bytes\n";
+        if (sent == -1) {
+            std::cout << "ERROR on block " << i << "\n";
+            break;
+        }
+    }
+    fileToUpload.close();
+    return waitForOk(sock_fd);
 }
