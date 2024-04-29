@@ -39,4 +39,5 @@ int sendAuthMsg(int sock_fd, std::string username);
 int sendSyncMsg(int sock_fd);
 int sendUploadMsg(int sock_fd);
 int sendFile(int sock_fd, std::filesystem::path filePath);
-
+int receiveFile(int sock_fd, std::filesystem::path filePath, int totalBlocks);
+int receiveFileId(int sock_fd, FileId *fileId);

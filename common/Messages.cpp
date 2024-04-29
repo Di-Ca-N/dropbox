@@ -134,14 +134,17 @@ int sendFile(int sock_fd, std::filesystem::path filePath) {
     };
     memcpy(msg.payload, &payload, sizeof(payload));
 
-    send(sock_fd, &msg, sizeof(msg), 0);
+    if (send(sock_fd, &msg, sizeof(msg), MSG_NOSIGNAL) == -1) {
+        std::cout << "Cannot send data\n";
+        return -1;
+    }
 
     Message filePart = {.type=MSG_FILEPART};
     for (int i = 0; i < numBlocks; i++) {
         fileToUpload.read(filePart.payload, MAX_PAYLOAD);
         filePart.len = fileToUpload.gcount();
         //printMsg(&filePart);
-        int sent = send(sock_fd, &filePart, sizeof(filePart), 0);
+        int sent = send(sock_fd, &filePart, sizeof(filePart), MSG_NOSIGNAL);
         //std::cout << "Sent " << sent << " bytes\n";
         if (sent == -1) {
             std::cout << "ERROR on block " << i << "\n";
@@ -150,4 +153,39 @@ int sendFile(int sock_fd, std::filesystem::path filePath) {
     }
     fileToUpload.close();
     return waitForOk(sock_fd);
+}
+int receiveFileId(int sock_fd, FileId *fileId) {
+    Message msg;
+    if (readMessage(sock_fd, &msg) == -1) 
+        return -1;
+    memcpy(fileId, msg.payload, msg.len);
+    return 0;
+}
+
+int receiveFile(int sock_fd, std::filesystem::path filePath, int totalBlocks) {
+    std::ofstream file(filePath, std::ios::binary);
+
+    if (file) {
+        sendOk(sock_fd);
+    } else {
+        sendError(sock_fd, "Error while uploading file");
+        return -1;
+    }
+
+    Message filePart;
+    bool success = true;
+    for (int block = 0; block < totalBlocks; block++) {
+        if (readMessage(sock_fd, &filePart) == -1) {
+            success = false;
+            sendError(sock_fd, "Invalid message");
+            std::cout << "error on receiving block " << block << "\n";
+            break;
+        }
+        file.write(filePart.payload, filePart.len);
+    }
+    file.close();
+    if (!success)
+        return -1;
+    sendOk(sock_fd);
+    return 0;
 }

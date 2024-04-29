@@ -16,8 +16,7 @@
 #include "Messages.h"
 #include "SyncQueue.h"
 
-
-std::map<std::string, std::vector<SyncQueue*>> deviceManager;
+std::map<std::string, std::map<int, SyncQueue*>> deviceManager;
 
 void clientSyncReader(int clientSocket, std::string username, int deviceId) {
 
@@ -32,12 +31,18 @@ void clientSyncWriter(int clientSocket, std::string username, int deviceId) {
         FileOperation op = q->get();
 
         std::cout << "Sending updates on file " << op.file << " to device " << deviceId << "\n";
+
+        std::filesystem::path baseDir(username.c_str());
+        if (sendFile(clientSocket, baseDir / op.file) == -1) {
+            std::cout << "ABCDE\n";
+            break;
+        }
     }
 }
 
 void notifyAllDevices(std::string username, FileOperation op) {
     std::cout << "Notifying all devices of " << username << " about operation on " << op.file << "\n";
-    for (auto deviceQueue : deviceManager[username]) {
+    for (auto &[_, deviceQueue] : deviceManager[username]) {
         std::cout << "Pushing to queue at " << deviceQueue <<"\n";
         deviceQueue->push(op);
     }
@@ -49,7 +54,7 @@ void handleSync(int clientSocket, std::string username) {
 
     // Register device
     int deviceId = deviceManager[username].size();
-    deviceManager[username].push_back(new SyncQueue());
+    deviceManager[username][deviceId] = new SyncQueue();
 
     // Start sync threads
     std::cout << "Creating sync threads for user " << username << " device " << deviceId << "\n";
@@ -59,49 +64,28 @@ void handleSync(int clientSocket, std::string username) {
     sendOk(clientSocket, (char*)&deviceId, sizeof(deviceId));
     reader.join();
     writer.join();
+
+    std::cout << "Device " << deviceId << " of " << username << " disconnected\n";
+    delete deviceManager[username][deviceId];
+    deviceManager[username].erase(deviceId);
 }
+
 
 void clientUpload(int clientSocket, std::string username) {
     sendOk(clientSocket);
 
-    Message fileId;
-    if (readMessage(clientSocket, &fileId) == -1) 
+    FileId fileId;
+    if (receiveFileId(clientSocket, &fileId) == -1)
         return;
-    
-    FileId *payload = (FileId*) fileId.payload;
 
-    std::filesystem::path uploadPath(payload->filename);
-    //std::cout << "Uploading file to " << uploadPath  << "\n";
-    std::ofstream file(username.c_str() / uploadPath, std::ios::binary);
-
-    if (file) {
-        sendOk(clientSocket);
-    } else {
-        sendError(clientSocket, "Error while uploading file"); 
+    std::filesystem::path filename(fileId.filename);
+    if (receiveFile(clientSocket, username.c_str() / filename, fileId.totalBlocks) == -1)
         return;
-    }
-
-    Message filePart;
-    bool success = true;
-    for (int block = 0; block < payload->totalBlocks; block++) {
-        //std::cout << "Getting chunk " << block + 1 << "/" << payload->totalBlocks << "\n";
-        if (readMessage(clientSocket, &filePart) == -1) {
-            success = false;
-            sendError(clientSocket, "Invalid message");
-            break;
-        }
-        //printMsg(&filePart);
-        file.write(filePart.payload, filePart.len);
-    }
-    file.close();
-    if (success) {
-        std::cout << "Upload Successful\n";
-        sendOk(clientSocket);
-    }
 
     // Notify all clients about the new file
-    notifyAllDevices(username, {.opType=1, .file=payload->filename});
+    notifyAllDevices(username, {.opType=1, .file=filename});
 }
+
 
 void handleClient(int clientSocket) {
     Message msg;
@@ -142,13 +126,17 @@ void handleClient(int clientSocket) {
             sendError(clientSocket, "Unknown msg type");
             break;
     }
-    close(clientSocket); 
+    close(clientSocket);
 }
 
 int main(int argc, char *argv[]) {
+    int port;
     if (argc != 2) {
-        fprintf(stderr, "Usage: server <port>\n");
-        return 1;
+        port = 8000;
+        //fprintf(stderr, "Usage: server <port>\n");
+        //return 1;
+    } else {
+        port = atoi(argv[1]);
     }
 
     // Set directory to store user files
@@ -167,7 +155,7 @@ int main(int argc, char *argv[]) {
     // Binding do socket na porta 8000
     sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(atoi(argv[1]));
+    addr.sin_port = htons(port);
     addr.sin_addr.s_addr = INADDR_ANY;
     int err;
     err = bind(sock_fd, (sockaddr*) &addr, sizeof(addr));

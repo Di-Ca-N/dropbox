@@ -70,12 +70,19 @@ void handleUpload() {
 }
 
 void syncReader(int serverSocket) {
-    Message msg;
     while (true) {
-        if (readMessage(serverSocket, &msg) == -1) {
-            break;
-        };
-        printMsg(&msg);
+        FileId fileId;
+        if (receiveFileId(serverSocket, &fileId) == -1) {
+            return;
+        }
+
+        std::filesystem::path filename(fileId.filename);
+        if (receiveFile(serverSocket, "sync_dir" / filename, fileId.totalBlocks) == -1) {
+            std::cout << "ABCDE\n";
+            return;
+        }
+
+        //std::cout << "Received update on file " << filename << "\n"; 
     }
 }
 
@@ -84,7 +91,7 @@ void syncWriter(int serverSocket) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 4) {
+    if (argc < 4) {
         fprintf(stderr, "Usage: ./client <username> <server_ip_address> <port>\n");
         return 1;
     }
@@ -103,6 +110,8 @@ int main(int argc, char* argv[]) {
         close(sync_fd);
         return 1;
     }
+
+    std::filesystem::create_directory("sync_dir");
 
     std::thread reader(syncReader, sync_fd);
     std::thread writer(syncWriter, sync_fd);
