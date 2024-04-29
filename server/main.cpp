@@ -5,19 +5,144 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <string.h>
+#include <filesystem>
+#include <fstream>
+#include <cstring>
+#include <map>
+#include <queue>
+#include <semaphore.h>
 
-void handleClient(int clientSocket) {
-    char buffer[256];
+#include "Messages.h"
+#include "SyncQueue.h"
+
+
+std::map<std::string, std::vector<SyncQueue*>> deviceManager;
+
+void clientSyncReader(int clientSocket, std::string username, int deviceId) {
+
+}
+
+void clientSyncWriter(int clientSocket, std::string username, int deviceId) {
+    std::cout << "Writer thread\n";
+    auto q = deviceManager[username][deviceId];
+
+    std::cout << "Using queue at " << q << "\n"; 
     while (true) {
-        int bytes = recv(clientSocket, buffer, 256, 0);
+        FileOperation op = q->get();
 
-        if (bytes == 0) {
-            break;
-        }
-        std::cout << buffer << std::endl;
+        std::cout << "Sending updates on file " << op.file << " to device " << deviceId << "\n";
+    }
+}
+
+void notifyAllDevices(std::string username, FileOperation op) {
+    std::cout << "Notifying all devices of " << username << " about operation on " << op.file << "\n";
+    for (auto deviceQueue : deviceManager[username]) {
+        std::cout << "Pushing to queue at " << deviceQueue <<"\n";
+        deviceQueue->push(op);
+    }
+}
+
+void handleSync(int clientSocket, std::string username) {
+    // Create Sync dir if not exists
+    std::filesystem::create_directory(username);
+
+    // Register device
+    int deviceId = deviceManager[username].size();
+    deviceManager[username].push_back(new SyncQueue());
+
+    // Start sync threads
+    std::cout << "Creating sync threads for user " << username << " device " << deviceId << "\n";
+    std::thread reader(clientSyncReader, clientSocket, username, deviceId);
+    std::thread writer(clientSyncWriter, clientSocket, username, deviceId);
+
+    sendOk(clientSocket, (char*)&deviceId, sizeof(deviceId));
+    reader.join();
+    writer.join();
+}
+
+void clientUpload(int clientSocket, std::string username) {
+    sendOk(clientSocket);
+
+    Message fileId;
+    if (readMessage(clientSocket, &fileId) == -1) 
+        return;
+    
+    FileId *payload = (FileId*) fileId.payload;
+
+    std::filesystem::path uploadPath(payload->filename);
+    //std::cout << "Uploading file to " << uploadPath  << "\n";
+    std::ofstream file(username.c_str() / uploadPath, std::ios::binary);
+
+    if (file) {
+        sendOk(clientSocket);
+    } else {
+        sendError(clientSocket, "Error while uploading file"); 
+        return;
     }
 
-    close(clientSocket);
+    Message filePart;
+    bool success = true;
+    for (int block = 0; block < payload->totalBlocks; block++) {
+        //std::cout << "Getting chunk " << block + 1 << "/" << payload->totalBlocks << "\n";
+        if (readMessage(clientSocket, &filePart) == -1) {
+            success = false;
+            sendError(clientSocket, "Invalid message");
+            break;
+        }
+        //printMsg(&filePart);
+        file.write(filePart.payload, filePart.len);
+    }
+    file.close();
+    if (success) {
+        std::cout << "Upload Successful\n";
+        sendOk(clientSocket);
+    }
+
+    // Notify all clients about the new file
+    notifyAllDevices(username, {.opType=1, .file=payload->filename});
+}
+
+void handleClient(int clientSocket) {
+    Message msg;
+    if (readMessage(clientSocket, &msg) == -1) {
+        fprintf(stderr, "Erro");
+        close(clientSocket);
+        return;
+    };
+
+    //printMsg(&msg);
+    if (msg.type == MSG_AUTH) {
+        sendOk(clientSocket);
+    } else {
+        sendError(clientSocket, "Expected AUTH msg");
+        close(clientSocket);
+        return;
+    };
+
+    std::string username(msg.payload, msg.payload + msg.len);
+
+    if(readMessage(clientSocket, &msg) == -1) {
+        fprintf(stderr, "Erro 2");
+        close(clientSocket);
+        return;
+    }
+    //printMsg(&msg);
+
+    switch (msg.type) {
+        case MSG_SYNC:
+            handleSync(clientSocket, username);
+            break;
+
+        case MSG_UPLOAD:
+            clientUpload(clientSocket, username);
+            break;
+
+        default:
+            sendError(clientSocket, "Unknown msg type");
+            break;
+    }
+    close(clientSocket); 
 }
 
 int main(int argc, char *argv[]) {
@@ -25,6 +150,10 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Usage: server <port>\n");
         return 1;
     }
+
+    // Set directory to store user files
+    std::filesystem::create_directory(std::filesystem::current_path() / "data");
+    std::filesystem::current_path(std::filesystem::current_path() / "data");
 
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -61,11 +190,10 @@ int main(int argc, char *argv[]) {
     int c = 0;
     while (true) {
         int clientSocket = accept(sock_fd, nullptr, nullptr);
-        std::cout << "Cliente conectou\n";
         openConnections.push_back(std::thread(handleClient, clientSocket));
         c++;
 
-        if (c == 3) break; // Just to test server closing
+        if (c == 10) break; // Just to test server closing
     }
 
     // Wait for all clients to close their connections
