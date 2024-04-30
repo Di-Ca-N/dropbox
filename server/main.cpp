@@ -14,65 +14,58 @@
 #include <semaphore.h>
 
 #include "Messages.h"
-#include "SyncQueue.h"
+#include "DeviceManager.h"
 
-std::map<std::string, std::map<int, SyncQueue*>> deviceManager;
+std::map<std::string, DeviceManager*> deviceManagers;
 
-void clientSyncReader(int clientSocket, std::string username, int deviceId) {
+void clientSyncReader(int clientSocket, std::string username, Device device) {
 
 }
 
-void clientSyncWriter(int clientSocket, std::string username, int deviceId) {
+void clientSyncWriter(int clientSocket, std::string username, Device device) {
     std::cout << "Writer thread\n";
-    auto q = deviceManager[username][deviceId];
 
-    std::cout << "Using queue at " << q << "\n"; 
     while (true) {
-        FileOperation op = q->get();
+        FileOperation op = device.queue->get();
 
-        std::cout << "Sending updates on file " << op.file << " to device " << deviceId << "\n";
+        std::cout << "Sending updates on file " << op.file << " to device " << device.id << "\n";
 
         std::filesystem::path baseDir(username.c_str());
         if (sendFile(clientSocket, baseDir / op.file) == -1) {
-            std::cout << "ABCDE\n";
             break;
         }
     }
 }
 
-void notifyAllDevices(std::string username, FileOperation op) {
-    std::cout << "Notifying all devices of " << username << " about operation on " << op.file << "\n";
-    for (auto &[_, deviceQueue] : deviceManager[username]) {
-        std::cout << "Pushing to queue at " << deviceQueue <<"\n";
-        deviceQueue->push(op);
-    }
-}
 
 void handleSync(int clientSocket, std::string username) {
     // Create Sync dir if not exists
     std::filesystem::create_directory(username);
 
+    deviceManagers.emplace(username, new DeviceManager(username));
+    DeviceManager *manager = deviceManagers[username];
+
     // Register device
-    int deviceId = deviceManager[username].size();
-    deviceManager[username][deviceId] = new SyncQueue();
+    Device device = manager->registerDevice();
 
     // Start sync threads
-    std::cout << "Creating sync threads for user " << username << " device " << deviceId << "\n";
-    std::thread reader(clientSyncReader, clientSocket, username, deviceId);
-    std::thread writer(clientSyncWriter, clientSocket, username, deviceId);
+    std::cout << "Creating sync threads for user " << username << " device " << device.id << "\n";
+    std::thread reader(clientSyncReader, clientSocket, username, device);
+    std::thread writer(clientSyncWriter, clientSocket, username, device);
 
-    sendOk(clientSocket, (char*)&deviceId, sizeof(deviceId));
+    sendOk(clientSocket);
+
     reader.join();
     writer.join();
 
-    std::cout << "Device " << deviceId << " of " << username << " disconnected\n";
-    delete deviceManager[username][deviceId];
-    deviceManager[username].erase(deviceId);
+    std::cout << "Device " << device.id << " of " << username << " disconnected\n";
+    deviceManagers[username]->disconnectDevice(device.id);
 }
 
 
 void clientUpload(int clientSocket, std::string username) {
-    sendOk(clientSocket);
+    if (sendOk(clientSocket) == -1)
+        return;
 
     FileId fileId;
     if (receiveFileId(clientSocket, &fileId) == -1)
@@ -82,8 +75,10 @@ void clientUpload(int clientSocket, std::string username) {
     if (receiveFile(clientSocket, username.c_str() / filename, fileId.totalBlocks) == -1)
         return;
 
-    // Notify all clients about the new file
-    notifyAllDevices(username, {.opType=1, .file=filename});
+    if (deviceManagers.find(username) != deviceManagers.end()) {
+        // Notify all clients about the new file
+        deviceManagers[username]->notifyAllDevices({.opType=1, .file=filename});
+    }
 }
 
 

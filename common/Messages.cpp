@@ -40,17 +40,19 @@ void sendError(int sock_fd, std::string errorMsg) {
     send(sock_fd, &reply, sizeof(reply), 0);
 }
 
-void sendOk(int sock_fd) {
-    sendOk(sock_fd, nullptr, 0);
+int sendOk(int sock_fd) {
+    return sendOk(sock_fd, nullptr, 0);
 }
 
-void sendOk(int sock_fd, char* data, u_int16_t dataLen) {
+int sendOk(int sock_fd, char* data, u_int16_t dataLen) {
     Message reply = {
         .type=MSG_OK,
         .len=dataLen,
     };
     memcpy(reply.payload, data, dataLen);
-    send(sock_fd, &reply, sizeof(reply), 0);
+    if (send(sock_fd, &reply, sizeof(reply), MSG_NOSIGNAL) == -1) 
+        return -1;
+    return 0;
 }
 
 void printMsg(Message *msg) {
@@ -140,6 +142,7 @@ int sendFile(int sock_fd, std::filesystem::path filePath) {
     }
 
     Message filePart = {.type=MSG_FILEPART};
+    bool success = true;
     for (int i = 0; i < numBlocks; i++) {
         fileToUpload.read(filePart.payload, MAX_PAYLOAD);
         filePart.len = fileToUpload.gcount();
@@ -147,11 +150,16 @@ int sendFile(int sock_fd, std::filesystem::path filePath) {
         int sent = send(sock_fd, &filePart, sizeof(filePart), MSG_NOSIGNAL);
         //std::cout << "Sent " << sent << " bytes\n";
         if (sent == -1) {
-            std::cout << "ERROR on block " << i << "\n";
+            //std::cout << "ERROR on block " << i << "\n";
+            success = false;
             break;
         }
     }
     fileToUpload.close();
+    
+    if (!success)
+        return -1;
+
     return waitForOk(sock_fd);
 }
 int receiveFileId(int sock_fd, FileId *fileId) {
@@ -165,10 +173,12 @@ int receiveFileId(int sock_fd, FileId *fileId) {
 int receiveFile(int sock_fd, std::filesystem::path filePath, int totalBlocks) {
     std::ofstream file(filePath, std::ios::binary);
 
-    if (file) {
-        sendOk(sock_fd);
-    } else {
+    if (!file) {
         sendError(sock_fd, "Error while uploading file");
+        return -1;
+    }
+    
+    if (sendOk(sock_fd) == -1) {
         return -1;
     }
 
@@ -186,6 +196,7 @@ int receiveFile(int sock_fd, std::filesystem::path filePath, int totalBlocks) {
     file.close();
     if (!success)
         return -1;
-    sendOk(sock_fd);
+    if (sendOk(sock_fd) == -1)
+        return -1;
     return 0;
 }

@@ -57,3 +57,4 @@ build/
 
 # Server data folder
 data/
+sync_dir/

@@ -59,7 +59,7 @@ void handleUpload() {
 
     int serverConnection = connectToServer(username, serverIp, port);
 
-    if (sendUploadMsg(serverConnection) != 0) {
+    if (sendUploadMsg(serverConnection) == -1) {
         std::cout << "Error uploading file\n";
         return;
     }
@@ -67,6 +67,7 @@ void handleUpload() {
     if (sendFile(serverConnection, filePath) == 0) {
         std::cout << "Done!\n";
     }
+    close(serverConnection);
 }
 
 void syncReader(int serverSocket) {
@@ -78,11 +79,11 @@ void syncReader(int serverSocket) {
 
         std::filesystem::path filename(fileId.filename);
         if (receiveFile(serverSocket, "sync_dir" / filename, fileId.totalBlocks) == -1) {
-            std::cout << "ABCDE\n";
+            //std::cout << "ABCDE\n";
             return;
         }
 
-        //std::cout << "Received update on file " << filename << "\n"; 
+        std::cout << "Received update on file " << filename << "\n"; 
     }
 }
 

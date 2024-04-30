@@ -32,8 +32,8 @@ typedef struct {
 
 int readMessage(int sock_fd, Message* msg);
 void sendError(int sock_fd, std::string errorMsg);
-void sendOk(int sock_fd);
-void sendOk(int sock_fd, char* data, u_int16_t dataLen);
+int sendOk(int sock_fd);
+int sendOk(int sock_fd, char* data, u_int16_t dataLen);
 void printMsg(Message *msg);
 int sendAuthMsg(int sock_fd, std::string username);
 int sendSyncMsg(int sock_fd);
