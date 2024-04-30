@@ -38,6 +38,8 @@ void printMsg(Message *msg);
 int sendAuthMsg(int sock_fd, std::string username);
 int sendSyncMsg(int sock_fd);
 int sendUploadMsg(int sock_fd);
+int sendDownloadMsg(int sock_fd);
+int sendFileId(int sock_fd, std::string filename, int numBlocks, u_int64_t fileSize);
 int sendFile(int sock_fd, std::filesystem::path filePath);
 int receiveFile(int sock_fd, std::filesystem::path filePath, int totalBlocks);
 int receiveFileId(int sock_fd, FileId *fileId);

@@ -111,18 +111,14 @@ int sendUploadMsg(int sock_fd) {
     return waitForOk(sock_fd);
 }
 
-int sendFile(int sock_fd, std::filesystem::path filePath) {
-    std::ifstream fileToUpload(filePath, std::ifstream::binary);
-    fileToUpload.seekg(0, fileToUpload.end);
-    std::streampos fileSize = fileToUpload.tellg();
-    fileToUpload.seekg(0, fileToUpload.beg);
-    std::string filename = filePath.filename().string();
+int sendDownloadMsg(int sock_fd) {
+    Message msg = {.type=MSG_DOWNLOAD,.len=0};
 
-    unsigned int numBlocks = fileSize / MAX_PAYLOAD;
-    if (fileSize % MAX_PAYLOAD > 0) {
-        numBlocks++;
-    }
+    send(sock_fd, &msg, sizeof(msg), 0);
+    return waitForOk(sock_fd);
+}
 
+int sendFileId(int sock_fd, std::string filename, int numBlocks, u_int64_t fileSize) {
     FileId payload = {
         .totalBlocks=numBlocks,
         .fileSize=static_cast<u_int64_t>(fileSize),
@@ -140,17 +136,31 @@ int sendFile(int sock_fd, std::filesystem::path filePath) {
         std::cout << "Cannot send data\n";
         return -1;
     }
+    return 0;
+}
+
+int sendFile(int sock_fd, std::filesystem::path filePath) {
+    std::ifstream fileToUpload(filePath, std::ifstream::binary);
+    fileToUpload.seekg(0, fileToUpload.end);
+    std::streampos fileSize = fileToUpload.tellg();
+    fileToUpload.seekg(0, fileToUpload.beg);
+    std::string filename = filePath.filename().string();
+
+    unsigned int numBlocks = fileSize / MAX_PAYLOAD;
+    if (fileSize % MAX_PAYLOAD > 0) {
+        numBlocks++;
+    }
+
+    if (sendFileId(sock_fd, filename, numBlocks, fileSize) == -1) {
+        return -1;
+    }
 
     Message filePart = {.type=MSG_FILEPART};
     bool success = true;
     for (int i = 0; i < numBlocks; i++) {
         fileToUpload.read(filePart.payload, MAX_PAYLOAD);
         filePart.len = fileToUpload.gcount();
-        //printMsg(&filePart);
-        int sent = send(sock_fd, &filePart, sizeof(filePart), MSG_NOSIGNAL);
-        //std::cout << "Sent " << sent << " bytes\n";
-        if (sent == -1) {
-            //std::cout << "ERROR on block " << i << "\n";
+        if (send(sock_fd, &filePart, sizeof(filePart), MSG_NOSIGNAL) == -1) {
             success = false;
             break;
         }

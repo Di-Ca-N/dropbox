@@ -24,13 +24,13 @@ void clientSyncReader(int clientSocket, std::string username, Device device) {
 
 void clientSyncWriter(int clientSocket, std::string username, Device device) {
     std::cout << "Writer thread\n";
+    std::filesystem::path baseDir(username.c_str());
 
     while (true) {
         FileOperation op = device.queue->get();
 
         std::cout << "Sending updates on file " << op.file << " to device " << device.id << "\n";
 
-        std::filesystem::path baseDir(username.c_str());
         if (sendFile(clientSocket, baseDir / op.file) == -1) {
             break;
         }
@@ -81,6 +81,15 @@ void clientUpload(int clientSocket, std::string username) {
     }
 }
 
+void clientDownload(int clientSocket, std::string username) {
+    if (sendOk(clientSocket) == -1)
+        return;
+    FileId fileId;
+    if (receiveFileId(clientSocket, &fileId) == -1)
+        return;
+    std::filesystem::path basePath(username.c_str());
+    sendFile(clientSocket, basePath/fileId.filename);
+}
 
 void handleClient(int clientSocket) {
     Message msg;
@@ -115,6 +124,10 @@ void handleClient(int clientSocket) {
 
         case MSG_UPLOAD:
             clientUpload(clientSocket, username);
+            break;
+
+        case MSG_DOWNLOAD:
+            clientDownload(clientSocket, username);
             break;
 
         default:

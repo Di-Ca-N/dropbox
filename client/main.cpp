@@ -70,6 +70,43 @@ void handleUpload() {
     close(serverConnection);
 }
 
+void handleDownload() {
+    std::filesystem::path filePath;
+    std::cin >> filePath;
+
+    std::cout << "Downloading file " << filePath.filename() << " to " << filePath << "\n";
+
+    int serverConnection = connectToServer(username, serverIp, port);
+    if (serverConnection == -1) return;
+
+    if (sendDownloadMsg(serverConnection) == -1) {
+        close(serverConnection);
+        std::cout << "Error\n";
+        return;
+    }
+
+    if (sendFileId(serverConnection, filePath.filename(), 0, 0) == -1) {
+        close(serverConnection);
+        std::cout << "Error\n";
+        return;
+    }
+
+    FileId fileId;
+    if (receiveFileId(serverConnection, &fileId) == -1) {
+        close(serverConnection);
+        std::cout << "Error\n";
+        return;        
+    }
+    if (receiveFile(serverConnection, filePath, fileId.totalBlocks) == -1) {
+        close(serverConnection);
+        std::cout << "Error\n";
+        return;
+    }
+    close(serverConnection);
+    std::cout << "Done!\n";
+    return;
+}
+
 void syncReader(int serverSocket) {
     while (true) {
         FileId fileId;
@@ -124,6 +161,8 @@ int main(int argc, char* argv[]) {
         
         if (cmd == "upload") {
             handleUpload();
+        } else if (cmd == "download") {
+            handleDownload();
         } else if (cmd == "exit") {
             break;
         }
