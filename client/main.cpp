@@ -110,17 +110,15 @@ void handleDownload() {
 void syncReader(int serverSocket) {
     while (true) {
         FileId fileId;
-        if (receiveFileId(serverSocket, &fileId) == -1) {
-            return;
+        try {
+            receiveFileId(serverSocket, &fileId);
+            std::filesystem::path filename(fileId.filename);
+            receiveFile(serverSocket, "sync_dir" / filename, fileId.totalBlocks);
+            std::cout << "Received update on file " << filename << "\n";
+        } catch (std::runtime_error) {
+            std::cout << "Server disconnected\n";
+            break;
         }
-
-        std::filesystem::path filename(fileId.filename);
-        if (receiveFile(serverSocket, "sync_dir" / filename, fileId.totalBlocks) == -1) {
-            //std::cout << "ABCDE\n";
-            return;
-        }
-
-        std::cout << "Received update on file " << filename << "\n"; 
     }
 }
 

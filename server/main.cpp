@@ -93,14 +93,16 @@ void clientDownload(int clientSocket, std::string username) {
 
 void handleClient(int clientSocket) {
     Message msg;
-    if (readMessage(clientSocket, &msg) == -1) {
+    try {
+        msg = readMessage(clientSocket);
+    } catch (std::runtime_error) {
         fprintf(stderr, "Erro");
         close(clientSocket);
         return;
-    };
+    }
 
     //printMsg(&msg);
-    if (msg.type == MSG_AUTH) {
+    if (msg.type == MsgType::MSG_AUTH) {
         sendOk(clientSocket);
     } else {
         sendError(clientSocket, "Expected AUTH msg");
@@ -110,7 +112,9 @@ void handleClient(int clientSocket) {
 
     std::string username(msg.payload, msg.payload + msg.len);
 
-    if(readMessage(clientSocket, &msg) == -1) {
+    try {
+        msg = readMessage(clientSocket);
+    } catch (std::runtime_error) {
         fprintf(stderr, "Erro 2");
         close(clientSocket);
         return;
@@ -118,15 +122,15 @@ void handleClient(int clientSocket) {
     //printMsg(&msg);
 
     switch (msg.type) {
-        case MSG_SYNC:
+        case MsgType::MSG_SYNC:
             handleSync(clientSocket, username);
             break;
 
-        case MSG_UPLOAD:
+        case MsgType::MSG_UPLOAD:
             clientUpload(clientSocket, username);
             break;
 
-        case MSG_DOWNLOAD:
+        case MsgType::MSG_DOWNLOAD:
             clientDownload(clientSocket, username);
             break;
 

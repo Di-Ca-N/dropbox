@@ -1,23 +1,26 @@
 #include <sys/types.h>
 #include <string>
 #include <filesystem>
+#include <stdexcept>
 
 #define MAX_PAYLOAD 512
 #define MAX_FILENAME 256
 
-#define MSG_AUTH 0
-#define MSG_SYNC 1
-#define MSG_UPLOAD 2
-#define MSG_DOWNLOAD 3
-#define MSG_LIST_SERVER 4
-#define MSG_FILE_ID 5
-#define MSG_FILEPART 6
-#define MSG_OK 254
-#define MSG_ERROR 255
 
+enum class MsgType : u_int8_t {
+    MSG_AUTH,
+    MSG_SYNC,
+    MSG_UPLOAD,
+    MSG_DOWNLOAD,
+    MSG_LIST_SERVER,
+    MSG_FILE_ID,
+    MSG_FILEPART,
+    MSG_OK,
+    MSG_ERROR
+};
 
 typedef struct {
-    u_int8_t type;
+    MsgType type;
     u_int16_t len;
     char payload[MAX_PAYLOAD];
 } Message;
@@ -30,7 +33,7 @@ typedef struct {
 } FileId;
 
 
-int readMessage(int sock_fd, Message* msg);
+Message readMessage(int sock_fd);
 void sendError(int sock_fd, std::string errorMsg);
 int sendOk(int sock_fd);
 int sendOk(int sock_fd, char* data, u_int16_t dataLen);
