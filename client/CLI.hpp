@@ -4,17 +4,15 @@
 #include <memory>
 
 #include "ClientState.hpp"
-#include "CLICallback.hpp"
-#include "Connection.hpp"
 
 class CLI {
     std::shared_ptr<ClientState> clientState;
-    std::unique_ptr<CLICallback> callback;
+
+    void getSyncDir();
 
 public:
-    CLI(std::shared_ptr<ClientState> clientState,
-            std::shared_ptr<Connection> connection);
-    void run();
+    CLI();
+    void run(std::string username, std::string ip, int port);
 };
 
 #endif

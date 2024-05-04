@@ -2,7 +2,7 @@
 #include <memory>
 #include <string>
 
-#include "Client.hpp"
+#include "CLI.hpp"
 
 int main(int argc, char* argv[]) {
     int port;
@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    std::unique_ptr<Client> client = std::make_unique<Client>(Client());
-    client->run(argv[1], argv[2], port);
+    std::unique_ptr<CLI> cli = std::make_unique<CLI>(CLI());
+    cli->run(argv[1], argv[2], port);
     return 0;
 }

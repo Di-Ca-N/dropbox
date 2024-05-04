@@ -13,10 +13,7 @@ add_executable(server
 )
 add_executable(client
     client/main.cpp
-    client/Client.cpp
-    client/Connection.cpp
     client/CLI.cpp
-    client/CLICallback.cpp
 )
 
 target_include_directories(server PUBLIC common)

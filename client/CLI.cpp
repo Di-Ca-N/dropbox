@@ -3,17 +3,12 @@
 
 #include "CLI.hpp"
 #include "ClientState.hpp"
-#include "CLICallback.hpp"
-#include "Connection.hpp"
 
-CLI::CLI(std::shared_ptr<ClientState> clientState,
-             std::shared_ptr<Connection> connection) {
-    this->clientState = std::move(clientState);
-    this->callback = std::make_unique<CLICallback>(CLICallback(
-                                                      std::move(connection)));
+CLI::CLI() {
+    this->clientState = std::make_shared<ClientState>(ClientState::STATE_ACTIVE);
 }
 
-void CLI::run() {
+void CLI::run(std::string username, std::string ip, int port) {
     std::string command;
     while (*clientState == ClientState::STATE_ACTIVE) {
         std::cout << "> ";
@@ -25,3 +20,4 @@ void CLI::run() {
             std::cerr << "Command not recognized" << std::endl;
     }
 }
+
