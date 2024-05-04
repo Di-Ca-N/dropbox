@@ -6,12 +6,21 @@ set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 
 project("Dropbox")
 
+find_package(Threads REQUIRED)
+
 add_executable(server
     server/main.cpp
 )
 add_executable(client
     client/main.cpp
+    client/Client.cpp
+    client/Connection.cpp
+    client/CLI.cpp
+    client/CLICallback.cpp
 )
 
 target_include_directories(server PUBLIC common)
 target_include_directories(client PUBLIC common)
+
+target_link_libraries(client ${CMAKE_THREAD_LIBSS_INIT})
+
