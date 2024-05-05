@@ -14,6 +14,9 @@ add_executable(server
 add_executable(client
     client/main.cpp
     client/CLI.cpp
+    client/Connection.cpp
+    client/ClientMonitor.cpp
+    client/ServerMonitor.cpp
 )
 
 target_include_directories(server PUBLIC common)
