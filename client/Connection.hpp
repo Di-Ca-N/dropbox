@@ -2,6 +2,9 @@
 #define CONNECTION_H
 
 #include <string>
+#include <vector>
+
+#include "FileMetadata.hpp"
 
 class Connection {
 public:
@@ -9,6 +12,7 @@ public:
     void upload(std::string filepath);
     void download(std::string filepath);
     void delete_(std::string filepath);
+    std::vector<FileMetadata> listServer();
 };
 
 #endif

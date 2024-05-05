@@ -8,6 +8,7 @@
 #include "ClientState.hpp"
 #include "ServerMonitor.hpp"
 #include "ClientMonitor.hpp"
+#include "FileMetadata.hpp"
 
 #define SYNC_DIR "sync_dir"
 
@@ -44,6 +45,9 @@ void CLI::run(std::string username, std::string ip, int port) {
             connection->delete_(tokens[1]);
         else if (tokens.size() == 1 && tokens[0].compare("list_client") == 0)
             listClient();
+        else if (tokens.size() == 1 && tokens[0].compare("list_server") == 0)
+            for (auto meta : connection->listServer())
+                printFileMetadata(meta);
         else
             std::cerr << "Command not recognized" << std::endl;
     }
@@ -72,15 +76,23 @@ void CLI::getSyncDir() {
 
 void CLI::listClient() {
     struct stat fileStat;
+    FileMetadata meta;
 
     for (const auto& file : std::filesystem::directory_iterator(SYNC_DIR)) {
         if (stat(file.path().c_str(), &fileStat) == 0) {
-            std::cout << file.path().string() << std::endl;
-            std::cout << "mtime: " << std::ctime(&fileStat.st_mtime);
-            std::cout << "atime: " << std::ctime(&fileStat.st_atime);
-            std::cout << "ctime: " << std::ctime(&fileStat.st_ctime);
-            std::cout << std::endl;
+            meta.filepath = file.path().string();
+            meta.mtime = fileStat.st_mtime;
+            meta.atime = fileStat.st_atime;
+            meta.ctime = fileStat.st_ctime;
+            printFileMetadata(meta);
         }
     }
 }
 
+void CLI::printFileMetadata(FileMetadata& fileMeta) {
+    std::cout << fileMeta.filepath << std::endl;
+    std::cout << "mtime: " << std::ctime(&fileMeta.mtime);
+    std::cout << "atime: " << std::ctime(&fileMeta.atime);
+    std::cout << "ctime: " << std::ctime(&fileMeta.ctime);
+    std::cout << std::endl;
+}

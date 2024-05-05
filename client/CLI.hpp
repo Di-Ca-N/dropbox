@@ -8,6 +8,7 @@
 #include "Connection.hpp"
 #include "ServerMonitor.hpp"
 #include "ClientMonitor.hpp"
+#include "FileMetadata.hpp"
 
 class CLI {
     std::shared_ptr<ClientState> clientState;
@@ -19,6 +20,7 @@ class CLI {
 
     void getSyncDir();
     void listClient();
+    void printFileMetadata(FileMetadata& fileMeta);
 
 public:
     void run(std::string username, std::string ip, int port);
