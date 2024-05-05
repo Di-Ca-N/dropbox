@@ -1,6 +1,8 @@
 #include <memory>
 #include <iostream>
 #include <filesystem>
+#include <vector>
+#include <unistd.h>
 
 #include "CLI.hpp"
 #include "ClientState.hpp"
@@ -17,15 +19,29 @@ void CLI::run(std::string username, std::string ip, int port) {
 
     getSyncDir();
 
-    std::string command;
+    std::string line;
+    std::string token;
+    std::istringstream iss;
+    std::vector<std::string> tokens;
     while (*clientState == ClientState::STATE_ACTIVE) {
-        std::cout << "> ";
-        std::getline(std::cin, command); 
+        tokens.clear();
 
-        if (command.compare("exit") == 0)
+        std::cout << "> ";
+        std::getline(std::cin, line);
+        iss = std::istringstream(line);
+        while (iss >> token)
+            tokens.push_back(token);
+
+        if (tokens.size() == 1 && tokens[0].compare("exit") == 0)
             *clientState = ClientState::STATE_CLOSING;
-        else if (command.compare("get_sync_dir") == 0)
+        else if (tokens.size() == 1 && tokens[0].compare("get_sync_dir") == 0)
             getSyncDir();
+        else if (tokens.size() == 2 && tokens[0].compare("upload") == 0)
+            connection->upload(tokens[1]);
+        else if (tokens.size() == 2 && tokens[0].compare("download") == 0)
+            connection->download(tokens[1]);
+        else if (tokens.size() == 2 && tokens[0].compare("delete") == 0)
+            connection->delete_(tokens[1]);
         else
             std::cerr << "Command not recognized" << std::endl;
     }
