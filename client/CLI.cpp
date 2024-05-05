@@ -2,7 +2,7 @@
 #include <iostream>
 #include <filesystem>
 #include <vector>
-#include <unistd.h>
+#include <sys/stat.h>
 
 #include "CLI.hpp"
 #include "ClientState.hpp"
@@ -42,6 +42,8 @@ void CLI::run(std::string username, std::string ip, int port) {
             connection->download(tokens[1]);
         else if (tokens.size() == 2 && tokens[0].compare("delete") == 0)
             connection->delete_(tokens[1]);
+        else if (tokens.size() == 1 && tokens[0].compare("list_client") == 0)
+            listClient();
         else
             std::cerr << "Command not recognized" << std::endl;
     }
@@ -65,6 +67,20 @@ void CLI::getSyncDir() {
         clientMonitor = std::make_unique<ClientMonitor>(ClientMonitor(
                                                            clientState, connection));
         clientThread = std::thread(&ClientMonitor::run, std::ref(*clientMonitor));
+    }
+}
+
+void CLI::listClient() {
+    struct stat fileStat;
+
+    for (const auto& file : std::filesystem::directory_iterator(SYNC_DIR)) {
+        if (stat(file.path().c_str(), &fileStat) == 0) {
+            std::cout << file.path().string() << std::endl;
+            std::cout << "mtime: " << std::ctime(&fileStat.st_mtime);
+            std::cout << "atime: " << std::ctime(&fileStat.st_atime);
+            std::cout << "ctime: " << std::ctime(&fileStat.st_ctime);
+            std::cout << std::endl;
+        }
     }
 }
 

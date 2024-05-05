@@ -18,6 +18,7 @@ class CLI {
     std::thread clientThread;
 
     void getSyncDir();
+    void listClient();
 
 public:
     void run(std::string username, std::string ip, int port);
