@@ -72,5 +72,3 @@ void printMsg(Message *msg) {
 
     std::cout << "=== MESSAGE END ===\n";
 }
-
-
