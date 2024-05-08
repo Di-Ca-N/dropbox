@@ -1,12 +1,15 @@
 #include <sys/types.h>
 #include <string>
 #include <filesystem>
+#include <fstream>
 
 #define MAX_PAYLOAD 512
 #define MAX_FILENAME 256
 
 #define ERROR_BROKEN_PIPE -1
 #define ERROR_PAYLOAD_TOO_BIG -2
+#define ERROR_ERROR_REPLY -3
+#define ERROR_UNEXPECTED_MSG_TYPE -4
 
 enum class MsgType : u_int8_t {
     MSG_AUTH,
@@ -60,6 +63,7 @@ typedef struct {
  * =======================================
  */
 
+
 // ===== Functions for sending/receiving responses =====
 
 /* Send an OK message. Return 0 on success or a negative number on error. */
@@ -69,9 +73,9 @@ int sendOk(int sock_fd);
 int sendError(int sock_fd, std::string errorMsg);
 
 /* Wait to receive an OK message. Return 0 on success or a negative number on error. 
-If you want the given response, you can optionally pass a pointer where the response will be saved.
+To access the response, you can optionally pass a pointer and the response will be copied into it.
 */
-int waitForOk(int sock_fd, Message *reply = nullptr);
+int waitForOk(int sock_fd, Message *replyPtr = nullptr);
 
 
 // ===== Functions to handle data exchange between client/server =====
@@ -83,11 +87,11 @@ int sendFileId(int sock_fd, FileId fileId);
 /* Receive a FileId. Return 0 on success or a negative number on error. */
 int receiveFileId(int sock_fd, FileId *fileId);
 
-/* Read file data from fileStream and sends it through sock_fd. Return 0 on success or a negative number on error.*/
-int sendFileData(int sock_fd, std::ifstream &fileStream);
+/* Read numBlocks blocks from fileStream and sends them through sock_fd. Return 0 on success or a negative number on error.*/
+int sendFileData(int sock_fd, int numBlocks, std::ifstream &fileStream);
 
-/* Receive file data from sock_fd and and writes it to fileStream. Return 0 on success or a negative number on error. */
-int receiveFileData(int sock_fd, std::ofstream &fileStream);
+/* Receive numBlocks blocks from sock_fd and and writes it to fileStream. Return 0 on success or a negative number on error. */
+int receiveFileData(int sock_fd, int numBlocks, std::ofstream &fileStream);
 
 /* Send the quantity of files that will be listed. Return 0 on success or a negative number on error. */
 int sendNumFiles(int sock_fd, int numFiles);
