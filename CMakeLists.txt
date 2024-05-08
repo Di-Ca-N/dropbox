@@ -10,15 +10,23 @@ project("Dropbox")
 
 option(BUILD_TESTS "Build unit tests" OFF)
 
+find_package(Threads REQUIRED)
+
 add_executable(server
     server/main.cpp
 )
 add_executable(client
     client/main.cpp
+    client/CLI.cpp
+    client/Connection.cpp
+    client/ClientMonitor.cpp
+    client/ServerMonitor.cpp
 )
 
 target_include_directories(server PUBLIC common)
 target_include_directories(client PUBLIC common)
+
+target_link_libraries(client ${CMAKE_THREAD_LIBSS_INIT})
 
 if(BUILD_TESTS)
     include(FetchContent)
