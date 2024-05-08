@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "FileMetadata.hpp"
+#include "FileOp.hpp"
 
 class Connection {
 public:
@@ -13,6 +14,7 @@ public:
     void download(std::string filepath);
     void delete_(std::string filepath);
     std::vector<FileMetadata> listServer();
+    void syncWrite(FileOp op, std::string ogFilename, std::string newFilename);
 };
 
 #endif
