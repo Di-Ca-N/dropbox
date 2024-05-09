@@ -14,6 +14,7 @@ find_package(Threads REQUIRED)
 
 add_executable(server
     server/main.cpp
+    common/Messages.cpp
 )
 add_executable(client
     client/main.cpp
@@ -21,6 +22,7 @@ add_executable(client
     client/Connection.cpp
     client/ClientMonitor.cpp
     client/ServerMonitor.cpp
+    common/Messages.cpp
 )
 
 target_include_directories(server PUBLIC common)

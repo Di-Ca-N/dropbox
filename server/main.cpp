@@ -6,6 +6,8 @@
 #include <thread>
 #include <vector>
 
+#include "Messages.hpp"
+
 void handleClient(int clientSocket) {
     char buffer[256];
     while (true) {

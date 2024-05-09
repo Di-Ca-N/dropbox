@@ -3,6 +3,7 @@
 #include <string>
 
 #include "CLI.hpp"
+#include "Messages.hpp"
 
 int main(int argc, char* argv[]) {
     int port;
