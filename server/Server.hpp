@@ -3,6 +3,20 @@
 #include <thread>
 
 #include "DeviceManager.hpp"
+#include "controllers/Controller.hpp"
+
+// class ClientHandler {
+//   private:
+//     bool running = false;
+//     int client_sock;
+//     Controller *controller;
+
+//   public:
+//     ClientHandler(int client_sock);
+//     ~ClientHandler();
+//     void run();
+//     void stop();
+// };
 
 class Server {
   private:
@@ -15,6 +29,6 @@ class Server {
   public:
     Server(int port);
     ~Server();
+    void stop();
     void run();
-    void handleClient(int client_socket);
 };

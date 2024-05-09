@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.27)
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project("Dropbox")
@@ -17,6 +17,8 @@ add_executable(server
     server/SyncQueue.cpp
     server/DeviceManager.cpp
     server/Server.cpp
+    server/controllers/UploadController.cpp
+    server/controllers/DownloadController.cpp
     common/Messages.cpp
 )
 add_executable(client
@@ -25,9 +27,10 @@ add_executable(client
     client/Connection.cpp
     client/ClientMonitor.cpp
     client/ServerMonitor.cpp
+    common/Messages.cpp
 )
 
-target_include_directories(server PUBLIC common)
+target_include_directories(server PUBLIC common server)
 target_include_directories(client PUBLIC common)
 
 target_link_libraries(client ${CMAKE_THREAD_LIBSS_INIT})

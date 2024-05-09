@@ -1,10 +1,15 @@
+#pragma once
+
 #include <sys/types.h>
 #include <string>
 #include <filesystem>
 #include <fstream>
+#include <exception>
+#include <map>
 
 #define MAX_PAYLOAD 512
 #define MAX_FILENAME 256
+#define MAX_USERNAME 256
 
 #define ERROR_BROKEN_PIPE -1
 #define ERROR_PAYLOAD_TOO_BIG -2
@@ -26,6 +31,8 @@ enum class MsgType : u_int8_t {
     MSG_OK,
     MSG_ERROR
 };
+
+std::string toString(MsgType type);
 
 typedef struct {
     MsgType type;
@@ -57,77 +64,67 @@ typedef struct {
     time_t cTime;
 } FileMeta;
 
+/* ======== EXCEPTIONS ======= */
+class BrokenPipe : public std::exception {
+    public:
+        BrokenPipe() {};
+};
 
-/* =========== HIGH LEVEL API =============
- * The following functions compose the high-level API of our protocol.
- * These functions use the more basic functions below to implement
- * their functionality.
- * =======================================
- */
+class UnexpectedMsgType : public std::exception {
+    private:
+        MsgType expected;
+        MsgType received;
+        std::string msg;
+    public:
+        UnexpectedMsgType(MsgType expected, MsgType received) {
+            this->expected = expected;
+            this->received = received;
+            msg = "Got unexpected message type: " + toString(received) + " (expected: " + toString(expected) + ")";
+        };
 
+        const char* what() const throw() { 
+            return msg.c_str(); 
+        } 
+};
 
-// ===== Functions for sending/receiving responses =====
+class PayloadTooBig : public std::exception {
+    public:
+        PayloadTooBig() {};
+};
 
-/* Send an OK message. Return 0 on success or a negative number on error. */
-int sendOk(int sock_fd);
+class ErrorReply : public std::exception {
+    private:
+        std::string msg;
+    public:
+        ErrorReply(std::string msg) {
+            this->msg = msg;
+        };
 
-/* Send an ERROR message. Return 0 on success or a negative number on error. */
-int sendError(int sock_fd, std::string errorMsg);
-
-/* Wait to receive an OK message. Return 0 on success or a negative number on error. 
-To access the response, you can optionally pass a pointer and the response will be copied into it.
-*/
-int waitForOk(int sock_fd, Message *replyPtr = nullptr);
-
-
-// ===== Functions to handle data exchange between client/server =====
-// All these functions come in send/receive pairs.
-
-/* Send the informed FileId. Return 0 on success or a negative number on error. */
-int sendFileId(int sock_fd, FileId fileId);
-
-/* Receive a FileId. Return 0 on success or a negative number on error. */
-int receiveFileId(int sock_fd, FileId *fileId);
-
-/* Read numBlocks blocks from fileStream and sends them through sock_fd. Return 0 on success or a negative number on error.*/
-int sendFileData(int sock_fd, int numBlocks, std::ifstream &fileStream);
-
-/* Receive numBlocks blocks from sock_fd and and writes it to fileStream. Return 0 on success or a negative number on error. */
-int receiveFileData(int sock_fd, int numBlocks, std::ofstream &fileStream);
-
-/* Send the quantity of files that will be listed. Return 0 on success or a negative number on error. */
-int sendNumFiles(int sock_fd, int numFiles);
-
-/* Receive the quantity of files that will be listed. Return 0 on success or a negative number on error. */
-int receiveNumFiles(int sock_fd, int *numFiles);
-
-/* Send the metadata information of one file. Return 0 on success or a negative number on error. */
-int sendFileMeta(int sock_fd, FileMeta meta);
-
-/* Receive the metadata information of one file. Return 0 on success or a negative number on error. */
-int receiveFileMeta(int sock_fd, FileMeta *meta);
-
-/* Send one FileOperation message with the given type. Return 0 on success or a negative number on error. */
-int sendFileOperation(int sock_fd, FileOpType type);
-
-/* Receive one FileOperation message. Return 0 on success or a negative number on error. */
-int receiveFileOperation(int sock_fd, FileOpType *type);
+        const char* what() const throw() { 
+            return msg.c_str(); 
+        }
+};
 
 
-/* =========== LOW LEVEL API =============
- * The following functions compose the low-level API of our protocol.
- * If possible, use the high level functions declared above.
- * =======================================
- */
+/* =========== HIGH LEVEL API ============= */
 
-/* Read one message from sock_fd into *msg. 
-This function ensures that the read message is always be complete.
-Return 0 on success and a negative number on error. On error, the final value on *msg is undefined */
-int receiveMessage(int sock_fd, Message *msg); 
+void sendOk(int sock_fd);
+void sendError(int sock_fd, std::string errorMsg);
+void waitConfirmation(int sock_fd);
+void sendAuth(int sock_fd, std::string username);
+std::string receiveAuth(int sock_fd);
+void sendFileId(int sock_fd, FileId fileId);
+FileId receiveFileId(int sock_fd);
+void sendFileData(int sock_fd, int numBlocks, std::ifstream &fileStream);
+void receiveFileData(int sock_fd, int numBlocks, std::ofstream &fileStream);
+void sendNumFiles(int sock_fd, int numFiles);
+int receiveNumFiles(int sock_fd);
+void sendFileMeta(int sock_fd, FileMeta meta);
+FileMeta receiveFileMeta(int sock_fd);
+void sendFileOperation(int sock_fd, FileOpType type);
+FileOpType receiveFileOperation(int sock_fd);
 
-/* Send a message with the given type and payload into fd. 
-Return 0 on success and a negative number on error */
-int sendMessage(int sock_fd, MsgType type, const void* msgPayload, unsigned int payloadLen);
-
-/* Print a message on stdout */
+/* =========== LOW LEVEL API ============= */
+Message receiveMessage(int sock_fd); 
+void sendMessage(int sock_fd, MsgType type, const void* msgPayload, unsigned int payloadLen);
 void printMsg(Message *msg);

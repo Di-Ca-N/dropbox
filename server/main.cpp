@@ -5,6 +5,7 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <csignal>
 
 #include "Server.hpp"
 
