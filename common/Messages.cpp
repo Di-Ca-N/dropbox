@@ -9,7 +9,8 @@
 
 std::map<MsgType, std::string> msgTypeNames = {
     {MsgType::MSG_AUTH, "MSG_AUTH"},
-    {MsgType::MSG_SYNC, "MSG_SYNC"},
+    {MsgType::MSG_SYNC_CLIENT_TO_SERVER, "MSG_SYNC_CLIENT_TO_SERVER"},
+    {MsgType::MSG_SYNC_SERVER_TO_CLIENT, "MSG_SYNC_SERVER_TO_CLIENT"},    
     {MsgType::MSG_OK, "MSG_OK"},
     {MsgType::MSG_ERROR, "MSG_ERROR"},
     {MsgType::MSG_UPLOAD, "MSG_UPLOAD"},
@@ -17,6 +18,9 @@ std::map<MsgType, std::string> msgTypeNames = {
     {MsgType::MSG_LIST_SERVER, "MSG_LIST_SERVER"},
     {MsgType::MSG_FILE_ID, "MSG_FILE_ID"},
     {MsgType::MSG_FILEPART, "MSG_FILEPART"},
+    {MsgType::MSG_FILE_OPERATION, "MSG_FILE_OPERATION"},
+    {MsgType::MSG_NUM_FILES, "MSG_NUM_FILES"},
+    {MsgType::MSG_FILE_METADATA, "MSG_FILE_METADATA"},
 };
 
 int receiveMessage(int sock_fd, Message *msg) {
@@ -34,7 +38,7 @@ int receiveMessage(int sock_fd, Message *msg) {
     return 0;
 }
 
-int sendMessage(int sock_fd, MsgType type, void *msgPayload,
+int sendMessage(int sock_fd, MsgType type, const void *msgPayload,
                 unsigned int payloadLen) {
     if (payloadLen > MAX_PAYLOAD) {
         return ERROR_PAYLOAD_TOO_BIG;

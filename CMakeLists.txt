@@ -14,6 +14,10 @@ find_package(Threads REQUIRED)
 
 add_executable(server
     server/main.cpp
+    server/SyncQueue.cpp
+    server/DeviceManager.cpp
+    server/Server.cpp
+    common/Messages.cpp
 )
 add_executable(client
     client/main.cpp

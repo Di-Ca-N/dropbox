@@ -13,7 +13,8 @@
 
 enum class MsgType : u_int8_t {
     MSG_AUTH,
-    MSG_SYNC,
+    MSG_SYNC_CLIENT_TO_SERVER,
+    MSG_SYNC_SERVER_TO_CLIENT,
     MSG_UPLOAD,
     MSG_DOWNLOAD,
     MSG_LIST_SERVER,
@@ -126,7 +127,7 @@ int receiveMessage(int sock_fd, Message *msg);
 
 /* Send a message with the given type and payload into fd. 
 Return 0 on success and a negative number on error */
-int sendMessage(int sock_fd, MsgType type, void* msgPayload, unsigned int payloadLen);
+int sendMessage(int sock_fd, MsgType type, const void* msgPayload, unsigned int payloadLen);
 
 /* Print a message on stdout */
 void printMsg(Message *msg);
