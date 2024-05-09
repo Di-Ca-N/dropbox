@@ -22,6 +22,7 @@ add_executable(client
     client/Connection.cpp
     client/ClientMonitor.cpp
     client/ServerMonitor.cpp
+    client/ClientState.cpp
     common/Messages.cpp
 )
 

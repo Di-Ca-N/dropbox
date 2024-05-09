@@ -16,7 +16,7 @@ void CLI::run(std::string username, std::string ip, int port) {
     connection = std::make_shared<Connection>(Connection());
     connection->connectToServer(username, ip, port);
 
-    clientState = std::make_shared<ClientState>(ClientState::STATE_ACTIVE);
+    clientState = std::make_shared<ClientState>(AppState::STATE_UNTRACKED);
 
     getSyncDir();
 
@@ -24,7 +24,8 @@ void CLI::run(std::string username, std::string ip, int port) {
     std::string token;
     std::istringstream iss;
     std::vector<std::string> tokens;
-    while (*clientState == ClientState::STATE_ACTIVE) {
+    while (clientState->get() == AppState::STATE_ACTIVE
+            || clientState->get() == AppState::STATE_UNTRACKED) {
         tokens.clear();
 
         std::cout << "> ";
@@ -34,7 +35,7 @@ void CLI::run(std::string username, std::string ip, int port) {
             tokens.push_back(token);
 
         if (tokens.size() == 1 && tokens[0].compare("exit") == 0)
-            *clientState = ClientState::STATE_CLOSING;
+            clientState->set(AppState::STATE_CLOSING);
         else if (tokens.size() == 1 && tokens[0].compare("get_sync_dir") == 0)
             getSyncDir();
         else if (tokens.size() == 2 && tokens[0].compare("upload") == 0)
@@ -61,17 +62,22 @@ void CLI::getSyncDir() {
             || !std::filesystem::is_directory(SYNC_DIR))
         std::filesystem::create_directory(SYNC_DIR);
 
-    if (!serverThread.joinable()) {
+    if (clientState->get() == AppState::STATE_UNTRACKED) {
+        if (serverThread.joinable())
+            serverThread.join();
+
+        if (clientThread.joinable())
+            clientThread.join();
+
         serverMonitor = std::make_unique<ServerMonitor>(ServerMonitor(
                                                            clientState, connection));
         serverThread = std::thread(&ServerMonitor::run, std::ref(*serverMonitor));
-    }
-
-    if (!clientThread.joinable()) {
         clientMonitor = std::make_unique<ClientMonitor>(ClientMonitor(
                                                            clientState, connection));
-        clientThread = std::thread(&ClientMonitor::run, std::ref(*clientMonitor));
+        clientThread = std::thread(&ClientMonitor::run, std::ref(*clientMonitor), SYNC_DIR);
     }
+
+    clientState->set(AppState::STATE_ACTIVE);
 }
 
 void CLI::listClient() {
