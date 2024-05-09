@@ -85,12 +85,10 @@ void printMsg(Message *msg) {
 bytes from the payload into *dest and returns 0. Optionally, you may pass a pointer
 to access the raw read message.
 */
-int receivePayload(int sock_fd, MsgType expectedType, void *dest,
-                   size_t destSize, Message *replyPtr = nullptr) {
+int receivePayload(int sock_fd, MsgType expectedType, void *dest, size_t destSize) {
     Message reply;
     int err = receiveMessage(sock_fd, &reply);
     if (err < 0) return err;
-    if (replyPtr != nullptr) memcpy(replyPtr, &reply, sizeof(reply));
     if (reply.type != expectedType) return ERROR_UNEXPECTED_MSG_TYPE;
     memcpy(dest, reply.payload, destSize);
     return 0;
@@ -106,13 +104,19 @@ int sendError(int sock_fd, std::string errorMsg) {
 }
 
 int waitForOk(int sock_fd, Message *replyPtr) {
-    int err = receivePayload(sock_fd, MsgType::MSG_OK, nullptr, 0, replyPtr);
+    Message msg;
+    int err = receiveMessage(sock_fd, &msg);
+    if (err < 0) return err;
 
-    if (err < 0) {
-        if (err == ERROR_UNEXPECTED_MSG_TYPE &&
-            replyPtr->type == MsgType::MSG_ERROR)
+    if (replyPtr != nullptr) {
+        memcpy(replyPtr, &msg, sizeof(msg));
+    }
+
+    if (msg.type != MsgType::MSG_OK) {
+        if (msg.type == MsgType::MSG_ERROR) {
             return ERROR_ERROR_REPLY;
-        return err;
+        }
+        return ERROR_UNEXPECTED_MSG_TYPE;
     }
 
     return 0;
@@ -151,15 +155,25 @@ int receiveFileData(int sock_fd, int numBlocks, std::ofstream &fileStream) {
 }
 
 int sendNumFiles(int sock_fd, int numFiles) {
-    return sendMessage(sock_fd, MsgType::MSG_NUM_FILES, &numFiles,
-                       sizeof(numFiles));
+    return sendMessage(sock_fd, MsgType::MSG_NUM_FILES, &numFiles, sizeof(numFiles));
 }
 
 int receiveNumFiles(int sock_fd, int *numFiles) {
-    return receivePayload(sock_fd, MsgType::MSG_NUM_FILES, numFiles,
-                          sizeof(*numFiles));
+    return receivePayload(sock_fd, MsgType::MSG_NUM_FILES, numFiles, sizeof(*numFiles));
 }
 
 int sendFileMeta(int sock_fd, FileMeta meta) { 
-    return 0;
+    return sendMessage(sock_fd, MsgType::MSG_FILE_METADATA, &meta, sizeof(meta));
+}
+
+int receiveFileMeta(int sock_fd, FileMeta *meta) {
+    return receivePayload(sock_fd, MsgType::MSG_FILE_METADATA, meta, sizeof(*meta));
+}
+
+int sendFileOperation(int sock_fd, FileOpType opType) {
+    return sendMessage(sock_fd, MsgType::MSG_FILE_OPERATION, &opType, sizeof(opType));
+}
+
+int receiveFileOperation(int sock_fd, FileOpType *opType) {
+    return receivePayload(sock_fd, MsgType::MSG_FILE_METADATA, opType, sizeof(*opType));
 }

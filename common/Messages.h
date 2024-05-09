@@ -21,6 +21,7 @@ enum class MsgType : u_int8_t {
     MSG_FILEPART,
     MSG_FILE_OPERATION,
     MSG_NUM_FILES,
+    MSG_FILE_METADATA,
     MSG_OK,
     MSG_ERROR
 };
