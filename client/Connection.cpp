@@ -25,6 +25,10 @@ std::vector<FileMetadata> Connection::listServer() {
     return std::vector<FileMetadata>();
 }
 
+void Connection::syncRead() {
+    // TODO
+}
+
 void Connection::syncWrite(FileOp op, std::string ogFilename, std::string newFilename) {
     switch (op) {
         case FileOp::OP_CHANGE:

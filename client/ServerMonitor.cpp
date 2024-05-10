@@ -13,7 +13,7 @@ ServerMonitor::ServerMonitor(std::shared_ptr<ClientState> clientState,
 
 void ServerMonitor::run() {
     while (clientState->get() == AppState::STATE_ACTIVE) {
-        // TODO
+        connection->syncRead();
     }
 }
 

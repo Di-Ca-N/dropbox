@@ -14,6 +14,7 @@ public:
     void download(std::string filepath);
     void delete_(std::string filepath);
     std::vector<FileMetadata> listServer();
+    void syncRead();
     void syncWrite(FileOp op, std::string ogFilename, std::string newFilename);
 };
 
