@@ -2,6 +2,7 @@
 #define CLIENT_MONITOR_H
 
 #include <memory>
+#include <string>
 
 #include "ClientState.hpp"
 #include "Connection.hpp"
@@ -13,7 +14,7 @@ class ClientMonitor {
 public:
     ClientMonitor(std::shared_ptr<ClientState> clientState,
             std::shared_ptr<Connection> connection);
-    void run();
+    void run(std::string sync_dir);
 };
 
 #endif

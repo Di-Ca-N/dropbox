@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 
+#include "FileOp.hpp"
 #include "Connection.hpp"
 #include "Messages.hpp"
 #include "utils.hpp"
@@ -96,4 +97,17 @@ void Connection::delete_(std::filesystem::path filepath) {
 std::vector<FileMetadata> Connection::listServer() {
     // TODO
     return std::vector<FileMetadata>();
+}
+
+void Connection::syncWrite(FileOp op, std::string ogFilename, std::string newFilename) {
+    switch (op) {
+        case FileOp::OP_CHANGE:
+            // TODO
+            break;
+        case FileOp::OP_DELETE:
+            // TODO
+            break;
+        default:
+            break;
+    }
 }

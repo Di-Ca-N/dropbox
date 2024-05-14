@@ -12,7 +12,7 @@ ServerMonitor::ServerMonitor(std::shared_ptr<ClientState> clientState,
 }
 
 void ServerMonitor::run() {
-    while (*clientState == ClientState::STATE_ACTIVE) {
+    while (clientState->get() == AppState::STATE_ACTIVE) {
         // TODO
     }
 }
