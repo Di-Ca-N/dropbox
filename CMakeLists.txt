@@ -5,6 +5,7 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 project("Dropbox")
 
@@ -14,6 +15,7 @@ find_package(Threads REQUIRED)
 
 add_executable(server
     server/main.cpp
+    server/handlers/UploadHandler.cpp
     common/Messages.cpp
 )
 add_executable(client

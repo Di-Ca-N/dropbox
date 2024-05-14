@@ -86,6 +86,8 @@ void printMsg(Message *msg) {
     std::cout << "=== MESSAGE END ===\n";
 }
 
+// Receive a message, validating the expected type and returns its payload
+// casted to the given type
 template <typename T>
 T receivePayload(int sock_fd, MsgType expectedType) {
     Message reply = receiveMessage(sock_fd);

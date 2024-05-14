@@ -33,14 +33,17 @@ enum class MsgType : u_int8_t {
 // Helper function to get a string representation of MsgType
 std::string toString(MsgType type);
 
+// Base Message. The Payload content depends on the MsgType.
 typedef struct {
     MsgType type;
     u_int16_t len;
     char payload[MAX_PAYLOAD];
 } Message;
 
+// Struct to identify a file for transference. When sending a file, all fields must be
+// filled. When requesting a file, only the filename and filenameSize are required.
 typedef struct {
-    u_int32_t totalBlocks;
+    u_int64_t totalBlocks;
     u_int64_t fileSize;
     u_int8_t filenameSize;
     char filename[MAX_FILENAME];
@@ -48,10 +51,14 @@ typedef struct {
 
 enum class FileOpType : u_int8_t { FILE_MODIFY, FILE_DELETE, FILE_MOVE };
 
+// Struct to identify a file operation
 typedef struct {
     FileOpType type;
-} FileOp;
+    u_int8_t filenameSize;
+    char filename[MAX_FILENAME];
+} FileOperation;
 
+// Struct to transfer file metadata
 typedef struct {
     char filename[MAX_FILENAME];
     time_t mTime;
