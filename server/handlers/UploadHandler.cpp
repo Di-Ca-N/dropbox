@@ -30,8 +30,6 @@ void UploadHandler::run(){
         receiveFileData(clientSocket, fileId.totalBlocks, file);
 
         sendOk(clientSocket);
-    } catch (BrokenPipe) {
-        std::cout << "Client disconnected during upload\n";
     } catch (UnexpectedMsgType) {
         sendError(clientSocket, "Unexpected message");
     }

@@ -46,7 +46,7 @@ void Connection::upload(std::filesystem::path filepath) {
         return;
     }
 
-    std::ifstream file(filepath);
+    std::ifstream file(filepath, std::ios::binary);
 
     if (!file) {
         std::cout << "Couldn't read file\n";
@@ -87,11 +87,56 @@ void Connection::upload(std::filesystem::path filepath) {
 }
 
 void Connection::download(std::filesystem::path filepath) {
-    // TODO
+    std::string filename = filepath.filename().string();
+    try {
+        sendMessage(serverSock, MsgType::MSG_DOWNLOAD, nullptr, 0);
+        waitConfirmation(serverSock);
+
+        FileId fid = {.filenameSize = static_cast<u_int8_t>(filename.size() + 1)};
+        filename.copy(fid.filename, MAX_FILENAME);
+
+        sendFileId(serverSock, fid);
+        waitConfirmation(serverSock);
+
+        FileId fileData = receiveFileId(serverSock);
+        sendOk(serverSock);
+
+        std::ofstream file(filepath, std::ios::binary);
+        receiveFileData(serverSock, fileData.totalBlocks, file);
+        sendOk(serverSock);
+
+        std::cout << "Download successful\n";
+    } catch (BrokenPipe) {
+        std::cout << "Connection broken during upload\n";
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
+    }
 }
 
 void Connection::delete_(std::filesystem::path filepath) {
-    // TODO
+    std::string filename = filepath.filename().string();
+
+    FileId fid;
+    filename.copy(fid.filename, MAX_FILENAME);
+    fid.filenameSize = static_cast<u_int8_t>(filename.size() + 1);
+    
+    try {
+        sendMessage(serverSock, MsgType::MSG_DELETE, nullptr, 0);
+        waitConfirmation(serverSock);
+
+        sendFileId(serverSock, fid);
+        waitConfirmation(serverSock);
+
+        std::cout << "File deleted successfully\n";
+    } catch (BrokenPipe) {
+        std::cout << "Connection broken during upload\n";
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
+    }
 }
 
 std::vector<FileMetadata> Connection::listServer() {

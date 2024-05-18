@@ -16,6 +16,9 @@ find_package(Threads REQUIRED)
 add_executable(server
     server/main.cpp
     server/handlers/UploadHandler.cpp
+    server/handlers/DeleteHandler.cpp
+    server/handlers/DownloadHandler.cpp
+    server/handlers/ListServerHandler.cpp
     common/Messages.cpp
 )
 add_executable(client

@@ -9,6 +9,8 @@
 
 #include "Messages.hpp"
 #include "handlers/UploadHandler.hpp"
+#include "handlers/DownloadHandler.hpp"
+#include "handlers/DeleteHandler.hpp"
 
 void handleClient(int clientSocket) {
     try {
@@ -22,6 +24,17 @@ void handleClient(int clientSocket) {
             switch(msg.type) {
                 case MsgType::MSG_UPLOAD:
                     UploadHandler(username, clientSocket).run();
+                    break;
+                case MsgType::MSG_DOWNLOAD:
+                    DownloadHandler(username, clientSocket).run();
+                    break;
+                case MsgType::MSG_DELETE:
+                    DeleteHandler(username, clientSocket).run();
+                    break;
+                case MsgType::MSG_LIST_SERVER:
+                    break;
+                default:
+                    sendError(clientSocket, "Unrecognized command");
                     break;
             }
         }

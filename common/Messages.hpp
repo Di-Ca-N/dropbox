@@ -20,6 +20,7 @@ enum class MsgType : u_int8_t {
     MSG_SYNC_SERVER_TO_CLIENT,
     MSG_UPLOAD,
     MSG_DOWNLOAD,
+    MSG_DELETE,
     MSG_LIST_SERVER,
     MSG_FILE_ID,
     MSG_FILEPART,
@@ -27,7 +28,7 @@ enum class MsgType : u_int8_t {
     MSG_NUM_FILES,
     MSG_FILE_METADATA,
     MSG_OK,
-    MSG_ERROR
+    MSG_ERROR,
 };
 
 // Helper function to get a string representation of MsgType
