@@ -35,7 +35,7 @@ Message receiveMessage(int sock_fd) {
         totalRead += readBytes;
     };
     Message *msg = reinterpret_cast<Message *>(buffer);
-    printMsg(msg);
+    //printMsg(msg);
     return *msg;
 }
 
@@ -49,7 +49,7 @@ void sendMessage(int sock_fd, MsgType type, const void *msgPayload,
         .len = payloadLen,
     };
     memcpy(msg.payload, msgPayload, payloadLen);
-    printMsg(&msg);
+    //printMsg(&msg);
 
     // Using MSG_NOSIGNAL to avoid receiving SIGPIPE when the socket is closed
     if (send(sock_fd, &msg, sizeof(msg), MSG_NOSIGNAL) == -1)
