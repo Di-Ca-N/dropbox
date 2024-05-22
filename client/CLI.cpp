@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <vector>
 #include <sys/stat.h>
+#include <poll.h>
+#include <unistd.h>
 
 #include "CLI.hpp"
 #include "ClientState.hpp"
@@ -20,37 +22,49 @@ void CLI::run(std::string username, std::string ip, int port) {
 
     getSyncDir();
 
+    bool nextLine = true;
+
+    struct pollfd cinFd = { .fd = STDIN_FILENO, .events = POLLIN };
+
     std::string line;
     std::string token;
     std::istringstream iss;
     std::vector<std::string> tokens;
-    while (clientState->get() == AppState::STATE_ACTIVE
-            || clientState->get() == AppState::STATE_UNTRACKED) {
-        tokens.clear();
+    while (clientState->get() != AppState::STATE_CLOSING) {
+        if (nextLine) {
+            std::cout << "> ";
+            std::cout.flush();
+            nextLine = false;
+        }
 
-        std::cout << "> ";
-        std::getline(std::cin, line);
-        iss = std::istringstream(line);
-        while (iss >> token)
-            tokens.push_back(token);
+        int cinPoll = poll(&cinFd, 1, 0);
 
-        if (tokens.size() == 1 && tokens[0].compare("exit") == 0)
-            clientState->set(AppState::STATE_CLOSING);
-        else if (tokens.size() == 1 && tokens[0].compare("get_sync_dir") == 0)
-            getSyncDir();
-        else if (tokens.size() == 2 && tokens[0].compare("upload") == 0)
-            connection->upload(tokens[1]);
-        else if (tokens.size() == 2 && tokens[0].compare("download") == 0)
-            connection->download(tokens[1]);
-        else if (tokens.size() == 2 && tokens[0].compare("delete") == 0)
-            connection->delete_(tokens[1]);
-        else if (tokens.size() == 1 && tokens[0].compare("list_client") == 0)
-            listClient();
-        else if (tokens.size() == 1 && tokens[0].compare("list_server") == 0)
-            for (auto meta : connection->listServer())
-                printFileMetadata(meta);
-        else
-            std::cerr << "Command not recognized" << std::endl;
+        if (cinPoll > 0 && cinFd.revents & POLLIN) {
+            std::getline(std::cin, line);
+            iss = std::istringstream(line);
+            tokens.clear();
+            while (iss >> token)
+                tokens.push_back(token);
+            nextLine = true;
+
+            if (tokens.size() == 1 && tokens[0].compare("exit") == 0)
+                clientState->setClosing();
+            else if (tokens.size() == 1 && tokens[0].compare("get_sync_dir") == 0)
+                getSyncDir();
+            else if (tokens.size() == 2 && tokens[0].compare("upload") == 0)
+                connection->upload(tokens[1]);
+            else if (tokens.size() == 2 && tokens[0].compare("download") == 0)
+                connection->download(tokens[1]);
+            else if (tokens.size() == 2 && tokens[0].compare("delete") == 0)
+                connection->delete_(tokens[1]);
+            else if (tokens.size() == 1 && tokens[0].compare("list_client") == 0)
+                listClient();
+            else if (tokens.size() == 1 && tokens[0].compare("list_server") == 0)
+                for (auto meta : connection->listServer())
+                    printFileMetadata(meta);
+            else
+                std::cerr << "Command not recognized" << std::endl;
+        }
     }
 
     serverThread.join();
@@ -77,7 +91,7 @@ void CLI::getSyncDir() {
         clientThread = std::thread(&ClientMonitor::run, std::ref(*clientMonitor), SYNC_DIR);
     }
 
-    clientState->set(AppState::STATE_ACTIVE);
+    clientState->setActiveIfNotClosing();
 }
 
 void CLI::listClient() {

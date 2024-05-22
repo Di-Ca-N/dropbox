@@ -53,7 +53,7 @@ void ClientMonitor::run(std::string sync_dir) {
                 if (event->mask & IN_DELETE || event->mask & IN_MOVED_FROM)
                     connection->syncWrite(FileOp::OP_DELETE, event->name, event->name);
                 if (event->mask & IN_DELETE_SELF)
-                    clientState->set(AppState::STATE_UNTRACKED);
+                    clientState->setUntrackedIfNotClosing();
                 eventPtr += sizeof(inotify_event) + event->len;
             }
         }

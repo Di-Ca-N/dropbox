@@ -2,38 +2,33 @@
 
 ClientState::ClientState(AppState state) {
     sem_init(&mutex, 0, 1);
-    sem_init(&rw, 0, 1);
-    this->readCount = 0;
     this->state = state;
 }
 
 ClientState::~ClientState() {
     sem_destroy(&mutex);
-    sem_destroy(&rw);
 }
 
 AppState ClientState::get() {
-    AppState state;
-
-    sem_wait(&mutex);
-    readCount++;
-    if (readCount == 1)
-        sem_wait(&rw);
-    sem_post(&mutex);
-
-    state = this->state;
-
-    sem_wait(&mutex);
-    readCount--;
-    if (readCount == 0)
-        sem_post(&rw);
-    sem_post(&mutex);
-
-    return state;
+    return state;   // at-most-once
 }
 
-void ClientState::set(AppState state) {
-    sem_wait(&rw);
-    this->state = state;
-    sem_post(&rw);
+void ClientState::setActiveIfNotClosing() {
+    sem_wait(&mutex);
+    if (state != AppState::STATE_CLOSING)
+        state = AppState::STATE_ACTIVE;
+    sem_post(&mutex);
+}
+
+void ClientState::setUntrackedIfNotClosing() {
+    sem_wait(&mutex);
+    if (state != AppState::STATE_CLOSING)
+        state = AppState::STATE_UNTRACKED;
+    sem_post(&mutex);
+}
+
+void ClientState::setClosing() {
+    sem_wait(&mutex);
+    state = AppState::STATE_CLOSING;
+    sem_post(&mutex);
 }

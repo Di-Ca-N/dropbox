@@ -11,14 +11,14 @@ enum class AppState {
 
 class ClientState {
     sem_t mutex;
-    sem_t rw;
-    int readCount;
     AppState state;
 public:
     ClientState(AppState state);
     ~ClientState();
     AppState get();
-    void set(AppState state);
+    void setActiveIfNotClosing();
+    void setUntrackedIfNotClosing();
+    void setClosing();
 };
 
 #endif
