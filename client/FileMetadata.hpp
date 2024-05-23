@@ -9,6 +9,8 @@ struct FileMetadata {
     time_t mtime;
     time_t atime;
     time_t ctime;
+
+    void print();
 };
 
 #endif
