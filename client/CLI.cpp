@@ -12,36 +12,25 @@
 #define SYNC_DIR "sync_dir"
 
 void CLI::run(std::string username, std::string ip, int port) {
+    bool newLine;
+    struct pollfd cinFd;
+
     makeConnection(username, ip, port);
     startClientState(AppState::STATE_UNTRACKED);
-
     initializeSyncDir();
 
-    bool nextLine = true;
+    newLine = true;
+    cinFd = { .fd = STDIN_FILENO, .events = POLLIN };
 
-    struct pollfd cinFd = { .fd = STDIN_FILENO, .events = POLLIN };
-
-    std::string line;
     while (clientState->get() != AppState::STATE_CLOSING) {
-        printPromptIfNewCommand(nextLine);
-
-        int cinPoll = poll(&cinFd, 1, 0);
-
-        if (cinPoll > 0 && cinFd.revents & POLLIN) {
-            std::getline(std::cin, line);
-            try {
-                std::unique_ptr<Command> command = CommandParser::parse(
-                        line,
-                        SYNC_DIR,
-                        weak_from_this(),
-                        std::weak_ptr(clientState),
-                        std::weak_ptr(connection)
-                );
-                command->execute();
-            } catch(const std::exception& e) {
-                std::cerr << e.what() << std::endl;
-            }
-            nextLine = true;
+        if (newLine) {
+            printPrompt();
+            newLine = false;
+        }
+        
+        if (newCommand(&cinFd)) {
+            parseCommand(newLine);
+            newLine = true;
         }
     }
 
@@ -58,12 +47,9 @@ void CLI::startClientState(AppState state) {
     clientState = std::make_shared<ClientState>(state);
 }
 
-void CLI::printPromptIfNewCommand(bool &nextLine) {
-    if (nextLine) {
-        std::cout << "> ";
-        std::cout.flush();
-        nextLine = false;
-    }
+void CLI::printPrompt() {
+    std::cout << "> ";
+    std::cout.flush();
 }
 
 void CLI::initializeSyncDir() {
@@ -74,6 +60,29 @@ void CLI::initializeSyncDir() {
             std::weak_ptr(connection)
     );
     cmd.execute();
+}
+
+void CLI::parseCommand(bool &newLine) {
+    std::string line;
+
+    std::getline(std::cin, line);
+    try {
+        std::unique_ptr<Command> command = CommandParser::parse(
+                line,
+                SYNC_DIR,
+                weak_from_this(),
+                std::weak_ptr(clientState),
+                std::weak_ptr(connection)
+        );
+        command->execute();
+    } catch(const std::exception& e) {
+        std::cerr << e.what() << std::endl;
+    }
+}
+
+bool CLI::newCommand(struct pollfd *cinFd) {
+    int cinPoll = poll(cinFd, 1, 0);
+    return (cinPoll > 0) && (cinFd->revents & POLLIN);
 }
 
 void CLI::restartServerThread() {

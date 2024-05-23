@@ -20,8 +20,10 @@ class CLI : public ThreadOwner, public std::enable_shared_from_this<CLI> {
 
     void makeConnection(std::string username, std::string ip, int port);
     void startClientState(AppState state);
-    void printPromptIfNewCommand(bool &nextLine);
+    void printPrompt();
     void initializeSyncDir();
+    void parseCommand(bool &newLine);
+    bool newCommand(struct pollfd *cinFd);
 
 public:
     void run(std::string username, std::string ip, int port);
