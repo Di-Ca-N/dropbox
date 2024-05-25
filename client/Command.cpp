@@ -1,8 +1,5 @@
 #include <sys/stat.h>
 
-#include "ThreadOwner.hpp"
-#include "ServerMonitor.hpp"
-#include "ClientMonitor.hpp"
 #include "Command.hpp"
 
 Upload::Upload(std::weak_ptr<Connection> connection,
@@ -81,7 +78,6 @@ GetSyncDir::GetSyncDir(std::filesystem::path syncDirPath,
     this->clientState = clientState;
     this->connection = connection;
 }
-        
 
 void GetSyncDir::execute() {
     std::shared_ptr<ThreadOwner> sharedOwner;

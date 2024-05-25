@@ -6,7 +6,6 @@
 
 #include "CLI.hpp"
 #include "ClientState.hpp"
-#include "CommandParser.hpp"
 #include "Command.hpp"
 
 #define SYNC_DIR "sync_dir"
@@ -17,6 +16,7 @@ void CLI::run(std::string username, std::string ip, int port) {
 
     makeConnection(username, ip, port);
     startClientState(AppState::STATE_UNTRACKED);
+    initializeCommandParser();
     initializeSyncDir();
 
     newLine = true;
@@ -52,6 +52,17 @@ void CLI::printPrompt() {
     std::cout.flush();
 }
 
+void CLI::initializeCommandParser() {
+    commandParser = std::make_unique<CommandParser>(
+            CommandParser(
+                SYNC_DIR,
+                weak_from_this(),
+                std::weak_ptr(clientState),
+                std::weak_ptr(connection)
+            )
+    );
+}
+
 void CLI::initializeSyncDir() {
     GetSyncDir cmd = GetSyncDir(
             SYNC_DIR,
@@ -67,13 +78,7 @@ void CLI::parseCommand(bool &newLine) {
 
     std::getline(std::cin, line);
     try {
-        std::unique_ptr<Command> command = CommandParser::parse(
-                line,
-                SYNC_DIR,
-                weak_from_this(),
-                std::weak_ptr(clientState),
-                std::weak_ptr(connection)
-        );
+        std::unique_ptr<Command> command = commandParser->parse(line);
         command->execute();
     } catch(const std::exception& e) {
         std::cerr << e.what() << std::endl;
