@@ -28,6 +28,10 @@ add_executable(client
     client/ClientMonitor.cpp
     client/ServerMonitor.cpp
     client/ClientState.cpp
+    client/CommandParser.cpp
+    client/CommandCreator.cpp
+    client/Command.cpp
+    client/FileMetadata.cpp
     common/Messages.cpp
 )
 

@@ -3,7 +3,6 @@
 #include <string>
 
 #include "CLI.hpp"
-#include "Messages.hpp"
 
 int main(int argc, char* argv[]) {
     int port;
@@ -20,7 +19,7 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
 
-    std::unique_ptr<CLI> cli = std::make_unique<CLI>(CLI());
+    std::shared_ptr<CLI> cli = std::make_shared<CLI>(CLI());
     cli->run(argv[1], argv[2], port);
     return 0;
 }
