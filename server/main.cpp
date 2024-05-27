@@ -5,18 +5,41 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <filesystem>
 
 #include "Messages.hpp"
+#include "handlers/UploadHandler.hpp"
+#include "handlers/DownloadHandler.hpp"
+#include "handlers/DeleteHandler.hpp"
 
 void handleClient(int clientSocket) {
-    char buffer[256];
-    while (true) {
-        int bytes = recv(clientSocket, buffer, 256, 0);
+    try {
+        std::string username = receiveAuth(clientSocket);
+        std::filesystem::create_directory(username);
+        sendOk(clientSocket);
 
-        if (bytes == 0) {
-            break;
+        while (true) {
+            Message msg = receiveMessage(clientSocket);
+
+            switch(msg.type) {
+                case MsgType::MSG_UPLOAD:
+                    UploadHandler(username, clientSocket).run();
+                    break;
+                case MsgType::MSG_DOWNLOAD:
+                    DownloadHandler(username, clientSocket).run();
+                    break;
+                case MsgType::MSG_DELETE:
+                    DeleteHandler(username, clientSocket).run();
+                    break;
+                case MsgType::MSG_LIST_SERVER:
+                    break;
+                default:
+                    sendError(clientSocket, "Unrecognized command");
+                    break;
+            }
         }
-        std::cout << buffer << std::endl;
+    } catch (BrokenPipe) {
+        std::cout << "Client disconnected\n";
     }
 
     close(clientSocket);
@@ -59,15 +82,13 @@ int main(int argc, char *argv[]) {
     std::cout << "Server listening on port " << argv[1] << "\n";
 
     std::vector<std::thread> openConnections;
-
+    std::filesystem::current_path(std::filesystem::current_path() / "data");
     int c = 0;
     while (true) {
         int clientSocket = accept(sock_fd, nullptr, nullptr);
         std::cout << "Cliente conectou\n";
         openConnections.push_back(std::thread(handleClient, clientSocket));
         c++;
-
-        if (c == 3) break; // Just to test server closing
     }
 
     // Wait for all clients to close their connections
