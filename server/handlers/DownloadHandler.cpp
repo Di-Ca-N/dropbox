@@ -3,10 +3,8 @@
 #include <fstream>
 #include <iostream>
 #include "Messages.hpp"
-#include "utils.hpp"
 
-
-DownloadHandler::DownloadHandler(std::string username, int clientSocket) {
+DownloadHandler::DownloadHandler(std::string username, ServerSocket clientSocket) {
     this->username = username;
     this->clientSocket = clientSocket;
 }
@@ -15,17 +13,17 @@ void DownloadHandler::run() {
     std::filesystem::path baseDir(username.c_str());
 
     try {
-        sendOk(clientSocket);
-        FileId fid = receiveFileId(clientSocket);
+        clientSocket.sendOk();
+        FileId fid = clientSocket.receiveFileId();
         std::string filename(fid.filename, fid.filename + fid.filenameSize);
         std::filesystem::path filepath = baseDir / filename;
 
         std::ifstream file(filepath, std::ios::binary);
 
         if (file) {
-            sendOk(clientSocket);
+            clientSocket.sendOk();
         } else {
-            sendError(clientSocket, "File not found");
+            clientSocket.sendError("File not found");
         }
 
         file.seekg(file.end);
@@ -35,14 +33,14 @@ void DownloadHandler::run() {
         fid.fileSize = fileSize;
         fid.totalBlocks = getNumBlocks(fileSize, MAX_PAYLOAD);
         
-        sendFileId(clientSocket, fid);
-        waitConfirmation(clientSocket);
+        clientSocket.sendFileId(fid);
+        clientSocket.waitConfirmation();
 
-        sendFileData(clientSocket, fid.totalBlocks, file);
-        waitConfirmation(clientSocket);
-    } catch (UnexpectedMsgType) {
+        clientSocket.sendFileData(fid.totalBlocks, file);
+        clientSocket.waitConfirmation();
+    } catch (UnexpectedMsgTypeException) {
         std::cout << "Unexpected message\n";
-    } catch (ErrorReply e) {
+    } catch (ErrorReply &e) {
         std::cout << "Error during file download: " << e.what() << "\n";
     }
 }

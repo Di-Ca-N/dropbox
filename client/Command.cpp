@@ -1,5 +1,7 @@
 #include <sys/stat.h>
+#include <cstring>
 
+#include "Messages.hpp"
 #include "Command.hpp"
 
 Upload::Upload(std::weak_ptr<Connection> connection,
@@ -45,8 +47,7 @@ ListServer::ListServer(std::weak_ptr<Connection> connection) {
 void ListServer::execute() {
     std::shared_ptr<Connection> sharedPtr;
     if ((sharedPtr = connection.lock())) {
-        for (auto meta : sharedPtr->listServer())
-            meta.print();
+        sharedPtr->listServer();
     }
 }
 
@@ -56,15 +57,15 @@ ListClient::ListClient(std::filesystem::path syncDirPath) {
 
 void ListClient::execute() {
     struct stat fileStat;
-    FileMetadata meta;
+    FileMeta meta;
 
     for (const auto& file : std::filesystem::directory_iterator(syncDirPath)) {
         if (stat(file.path().c_str(), &fileStat) == 0) {
-            meta.filepath = file.path().string();
-            meta.mtime = fileStat.st_mtime;
-            meta.atime = fileStat.st_atime;
-            meta.ctime = fileStat.st_ctime;
-            meta.print();
+            strncpy(meta.filename, file.path().c_str(), sizeof(meta.filename));
+            meta.mTime = fileStat.st_mtime;
+            meta.aTime = fileStat.st_atime;
+            meta.cTime = fileStat.st_ctime;
+            printMeta(meta);
         }
     }
 }

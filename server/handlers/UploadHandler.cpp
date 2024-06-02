@@ -2,9 +2,8 @@
 #include "Messages.hpp"
 #include <fstream>
 #include <filesystem>
-#include <iostream>
 
-UploadHandler::UploadHandler(std::string username, int clientSocket) {
+UploadHandler::UploadHandler(std::string username, ServerSocket clientSocket) {
     this->clientSocket = clientSocket;
     this->username = username;
 }
@@ -13,27 +12,25 @@ void UploadHandler::run(){
     std::filesystem::path baseDir(username.c_str());
 
     try {
-        sendOk(clientSocket);
+        clientSocket.sendOk();
         
-        FileId fileId = receiveFileId(clientSocket);
+        FileId fileId = clientSocket.receiveFileId();
         
         std::string filename(fileId.filename, fileId.filename+fileId.filenameSize);
 
         std::ofstream file(baseDir / filename);
 
         if (file) {
-            sendOk(clientSocket);
+            clientSocket.sendOk();
         } else {
-            sendError(clientSocket, "Could not create file");
+            clientSocket.sendError("Could not create file");
         }
 
-        receiveFileData(clientSocket, fileId.totalBlocks, file);
+        clientSocket.receiveFileData(fileId.totalBlocks, file);
 
-        sendOk(clientSocket);
-    } catch (UnexpectedMsgType) {
-        sendError(clientSocket, "Unexpected message");
+        clientSocket.sendOk();
+    } catch (UnexpectedMsgTypeException) {
+        clientSocket.sendError("Unexpected message");
     }
 }
 
-
-        

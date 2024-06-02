@@ -1,12 +1,14 @@
-#include "Handler.hpp"
 #include <string>
+
+#include "ServerSocket.hpp"
+#include "Handler.hpp"
 
 class DeleteHandler : public Handler {
     private:
         std::string username;
-        int clientSocket;
+        ServerSocket clientSocket;
 
     public:
-        DeleteHandler(std::string username, int clientSocket);
+        DeleteHandler(std::string username, ServerSocket clientSocket);
         void run();
 };

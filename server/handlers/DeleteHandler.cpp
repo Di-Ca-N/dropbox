@@ -1,10 +1,9 @@
-#include "DeleteHandler.hpp"
-
 #include <filesystem>
 
+#include "DeleteHandler.hpp"
 #include "Messages.hpp"
 
-DeleteHandler::DeleteHandler(std::string username, int clientSocket) {
+DeleteHandler::DeleteHandler(std::string username, ServerSocket clientSocket) {
     this->clientSocket = clientSocket;
     this->username = username;
 }
@@ -12,19 +11,19 @@ DeleteHandler::DeleteHandler(std::string username, int clientSocket) {
 void DeleteHandler::run() {
    std::filesystem::path baseDir(username.c_str());
     try {
-        sendOk(clientSocket);
-        FileId fid = receiveFileId(clientSocket);
+        clientSocket.sendOk();
+        FileId fid = clientSocket.receiveFileId();
 
         std::string filename(fid.filename, fid.filename + fid.fileSize);
         std::filesystem::path filepath = baseDir / filename;
 
         if (std::filesystem::remove(filepath)) {
-            sendOk(clientSocket);
+            clientSocket.sendOk();
         } else {
-            sendError(clientSocket, "File does not exist");
+            clientSocket.sendError("File does not exist");
         }
-    } catch (UnexpectedMsgType) {
-        sendError(clientSocket, "Unexpected Messsage Type\n");
+    } catch (UnexpectedMsgTypeException) {
+        clientSocket.sendError("Unexpected Messsage Type\n");
     }
 }
 

@@ -1,87 +1,71 @@
 #include <string>
-#include <vector>
 #include <iostream>
+#include <fstream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/if.h>
 
 #include "FileOp.hpp"
 #include "Connection.hpp"
+#include "BaseSocket.hpp"
 #include "Messages.hpp"
-#include "utils.hpp"
 
 
 void Connection::connectToServer(std::string username, std::string ip, int port) {
-    int serverConnection = socket(AF_INET, SOCK_STREAM, 0);
-
-    sockaddr_in addr;
-    addr.sin_port = htons(port);
-    addr.sin_family = AF_INET;
-    inet_aton(ip.data(), &addr.sin_addr);
- 
-    if (connect(serverConnection, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
-        std::cout << "Error when connecting to server\n";
-        return;
-    }
-
     try {
-        sendAuth(serverConnection, username);
-        waitConfirmation(serverConnection);
-        serverSock = serverConnection;
-    } catch (BrokenPipe) {
+        serverSock = ClientSocket();
+        serverSock.connect(ip, port);
+
+        serverSock.sendAuth(username);
+        serverSock.waitConfirmation();
+    } catch (BrokenPipeException) {
         std::cout << "Connection closed during authentication\n";
         return;
-    } catch (UnexpectedMsgType) {
+    } catch (UnexpectedMsgTypeException) {
         std::cout << "Unexpected response.\n";
         return;
-    } catch (ErrorReply e) {
+    } catch (ErrorReply &e) {
         std::cout << "Error: " << e.what() << "\n";
         return;
     }
 }
 
 void Connection::upload(std::filesystem::path filepath) {
-    if (serverSock == -1) {
-        std::cout << "Server connection is closed\n";
-        return;
-    }
-
-    std::ifstream file(filepath, std::ios::binary);
-
-    if (!file) {
-        std::cout << "Couldn't read file\n";
-        return;
-    }
-    
-    file.seekg(std::ios::end);
-    u_int64_t fileSize = file.tellg();
-    file.seekg(std::ios::beg);
-    
-    std::string filename = filepath.filename().string();
-
-    FileId fid = {
-        .totalBlocks = getNumBlocks(fileSize, MAX_PAYLOAD),
-        .fileSize = fileSize,
-        .filenameSize = static_cast<u_int8_t>(filename.length() + 1),
-    };
-    filename.copy(fid.filename, MAX_FILENAME);
-
     try {
-        sendMessage(serverSock, MsgType::MSG_UPLOAD, nullptr, 0);
-        waitConfirmation(serverSock);
+        std::ifstream file(filepath, std::ios::binary);
 
-        sendFileId(serverSock, fid);
-        waitConfirmation(serverSock);
+        file.seekg(std::ios::end);
+        u_int64_t fileSize = file.tellg();
+        file.seekg(std::ios::beg);
+        
+        std::string filename = filepath.filename().string();
 
-        sendFileData(serverSock, fid.totalBlocks, file);
-        waitConfirmation(serverSock);
+        FileId fid = {
+            .totalBlocks = getNumBlocks(fileSize, MAX_PAYLOAD),
+            .fileSize = fileSize,
+            .filenameSize = static_cast<u_int8_t>(filename.length() + 1),
+        };
+        filename.copy(fid.filename, MAX_FILENAME);
 
-        std::cout << "Upload successful!\n";
-    } catch (BrokenPipe) {
+        serverSock.sendMessage(MsgType::MSG_UPLOAD, nullptr, 0);
+        serverSock.waitConfirmation();
+
+        serverSock.sendFileId(fid);
+        serverSock.waitConfirmation();
+
+        serverSock.sendFileData(fid.totalBlocks, file);
+        serverSock.waitConfirmation();
+
+        std::cout << "Upload successful!" << std::endl;
+    } catch (SocketIOError) {
+        std::cout << "Server connection is closed" << std::endl;
+    } catch (std::ifstream::failure) {
+        std::cout << "Couldn't read file" << std::endl;
+    } catch (BrokenPipeException) {
         std::cout << "Connection broken during upload\n";
-    } catch (ErrorReply e) {
+    } catch (ErrorReply &e) {
         std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
+    } catch (UnexpectedMsgTypeException) {
         std::cout << "Unexpected response\n";
     }
 }
@@ -89,28 +73,28 @@ void Connection::upload(std::filesystem::path filepath) {
 void Connection::download(std::filesystem::path filepath) {
     std::string filename = filepath.filename().string();
     try {
-        sendMessage(serverSock, MsgType::MSG_DOWNLOAD, nullptr, 0);
-        waitConfirmation(serverSock);
+        serverSock.sendMessage(MsgType::MSG_DOWNLOAD, nullptr, 0);
+        serverSock.waitConfirmation();
 
         FileId fid = {.filenameSize = static_cast<u_int8_t>(filename.size() + 1)};
         filename.copy(fid.filename, MAX_FILENAME);
 
-        sendFileId(serverSock, fid);
-        waitConfirmation(serverSock);
+        serverSock.sendFileId(fid);
+        serverSock.waitConfirmation();
 
-        FileId fileData = receiveFileId(serverSock);
-        sendOk(serverSock);
+        FileId fileData = serverSock.receiveFileId();
+        serverSock.sendOk();
 
         std::ofstream file(filepath, std::ios::binary);
-        receiveFileData(serverSock, fileData.totalBlocks, file);
-        sendOk(serverSock);
+        serverSock.receiveFileData(fileData.totalBlocks, file);
+        serverSock.sendOk();
 
         std::cout << "Download successful\n";
-    } catch (BrokenPipe) {
+    } catch (BrokenPipeException) {
         std::cout << "Connection broken during upload\n";
-    } catch (ErrorReply e) {
+    } catch (ErrorReply &e) {
         std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
+    } catch (UnexpectedMsgTypeException) {
         std::cout << "Unexpected response\n";
     }
 }
@@ -123,25 +107,24 @@ void Connection::delete_(std::filesystem::path filepath) {
     fid.filenameSize = static_cast<u_int8_t>(filename.size() + 1);
     
     try {
-        sendMessage(serverSock, MsgType::MSG_DELETE, nullptr, 0);
-        waitConfirmation(serverSock);
+        serverSock.sendMessage(MsgType::MSG_DELETE, nullptr, 0);
+        serverSock.waitConfirmation();
 
-        sendFileId(serverSock, fid);
-        waitConfirmation(serverSock);
+        serverSock.sendFileId(fid);
+        serverSock.waitConfirmation();
 
         std::cout << "File deleted successfully\n";
-    } catch (BrokenPipe) {
+    } catch (BrokenPipeException) {
         std::cout << "Connection broken during upload\n";
-    } catch (ErrorReply e) {
+    } catch (ErrorReply &e) {
         std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
+    } catch (UnexpectedMsgTypeException) {
         std::cout << "Unexpected response\n";
     }
 }
 
-std::vector<FileMetadata> Connection::listServer() {
+void Connection::listServer() {
     // TODO
-    return std::vector<FileMetadata>();
 }
 
 void Connection::syncRead() {

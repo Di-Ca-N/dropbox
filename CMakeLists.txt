@@ -20,6 +20,8 @@ add_executable(server
     server/handlers/DownloadHandler.cpp
     server/handlers/ListServerHandler.cpp
     common/Messages.cpp
+    common/BaseSocket.cpp
+    common/ServerSocket.cpp
 )
 add_executable(client
     client/main.cpp
@@ -31,8 +33,9 @@ add_executable(client
     client/CommandParser.cpp
     client/CommandCreator.cpp
     client/Command.cpp
-    client/FileMetadata.cpp
     common/Messages.cpp
+    common/BaseSocket.cpp
+    common/ClientSocket.cpp
 )
 
 target_include_directories(server PUBLIC common)

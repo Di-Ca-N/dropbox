@@ -1,6 +1,6 @@
 #include "ListServerHandler.hpp"
 
-ListServerHandler::ListServerHandler(std::string username, int clientSocket) {
+ListServerHandler::ListServerHandler(std::string username, ServerSocket clientSocket) {
     this->username = username;
     this->clientSocket = clientSocket;
 }

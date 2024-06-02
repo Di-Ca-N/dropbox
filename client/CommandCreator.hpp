@@ -1,6 +1,8 @@
 #ifndef COMMAND_CREATOR_H
 #define COMMAND_CREATOR_H
 
+#include <vector>
+
 #include "Command.hpp"
 
 class CommandCreator {

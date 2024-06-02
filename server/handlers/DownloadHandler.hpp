@@ -1,12 +1,15 @@
-#include "Handler.hpp"
 #include <string>
+
+#include "ServerSocket.hpp"
+#include "Handler.hpp"
 
 class DownloadHandler : public Handler {
     private:
         std::string username;
-        int clientSocket;
+        ServerSocket clientSocket;
+
     public:
-        DownloadHandler(std::string username, int clientSocket);
+        DownloadHandler(std::string username, ServerSocket clientSocket);
         void run();
 };
 
