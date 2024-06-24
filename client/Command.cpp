@@ -1,6 +1,16 @@
+#include <iostream>
+#include <string.h>
 #include <sys/stat.h>
 
 #include "Command.hpp"
+
+void printMeta(FileMeta &meta) {
+    std::cout <<  meta.filename<< std::endl;
+    std::cout << "mtime: " << std::ctime(&meta.mTime);
+    std::cout << "atime: " << std::ctime(&meta.aTime);
+    std::cout << "ctime: " << std::ctime(&meta.cTime);
+    std::cout << std::endl;
+}
 
 Upload::Upload(std::weak_ptr<Connection> connection,
         std::filesystem::path target) {
@@ -46,7 +56,7 @@ void ListServer::execute() {
     std::shared_ptr<Connection> sharedPtr;
     if ((sharedPtr = connection.lock())) {
         for (auto meta : sharedPtr->listServer())
-            meta.print();
+            printMeta(meta);
     }
 }
 
@@ -56,15 +66,15 @@ ListClient::ListClient(std::filesystem::path syncDirPath) {
 
 void ListClient::execute() {
     struct stat fileStat;
-    FileMetadata meta;
+    FileMeta meta;
 
     for (const auto& file : std::filesystem::directory_iterator(syncDirPath)) {
         if (stat(file.path().c_str(), &fileStat) == 0) {
-            meta.filepath = file.path().string();
-            meta.mtime = fileStat.st_mtime;
-            meta.atime = fileStat.st_atime;
-            meta.ctime = fileStat.st_ctime;
-            meta.print();
+            strncpy(meta.filename, file.path().c_str(), MAX_FILENAME); 
+            meta.mTime = fileStat.st_mtime;
+            meta.aTime = fileStat.st_atime;
+            meta.cTime = fileStat.st_ctime;
+            printMeta(meta);
         }
     }
 }

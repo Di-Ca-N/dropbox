@@ -139,9 +139,30 @@ void Connection::delete_(std::filesystem::path filepath) {
     }
 }
 
-std::vector<FileMetadata> Connection::listServer() {
-    // TODO
-    return std::vector<FileMetadata>();
+std::vector<FileMeta> Connection::listServer() {
+    int numFiles;
+    std::vector<FileMeta> fileMetas;
+
+    try {
+        sendMessage(serverSock, MsgType::MSG_LIST_SERVER, nullptr, 0);
+        waitConfirmation(serverSock);
+
+        numFiles = receiveNumFiles(serverSock);
+        sendOk(serverSock);
+
+        for (int i = 0; i < numFiles; i++)
+            fileMetas.push_back(receiveFileMeta(serverSock));
+
+        sendOk(serverSock);
+    } catch(BrokenPipe) {
+        std::cout << "Connection broken during upload\n";
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
+    }
+
+    return fileMetas;
 }
 
 void Connection::syncRead() {
