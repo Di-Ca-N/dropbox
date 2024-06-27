@@ -6,11 +6,15 @@
 #include <filesystem>
 
 #include "Messages.hpp"
-#include "FileOp.hpp"
 
 class Connection {
 private:
-    int serverSock = -1;
+    int commandSock = -1;
+    int readSock = -1;
+
+    void createSocket(int &socketDescr, std::string ip, int port);
+    void authenticate(int &socketDescr, std::string username);
+    void setReadConnection(int &socketDescr);
 
 public:
     void connectToServer(std::string username, std::string ip, int port);
@@ -19,7 +23,7 @@ public:
     void delete_(std::filesystem::path filepath);
     std::vector<FileMeta> listServer();
     void syncRead();
-    void syncWrite(FileOp op, std::string ogFilename, std::string newFilename);
+    void syncWrite(FileOpType op, std::filesystem::path target);
 };
 
 #endif
