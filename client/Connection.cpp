@@ -206,7 +206,7 @@ void Connection::syncWrite(FileOpType op, std::filesystem::path target) {
                 sendChange(target);
                 break;
             case FileOpType::FILE_DELETE:
-                // TODO
+                sendDelete(target);
                 break;
             default:
                 break;
@@ -230,5 +230,13 @@ void Connection::sendChange(std::filesystem::path target) {
 
     file = std::ifstream(target);
     sendFileData(writeSock, fileId.totalBlocks, file);
+    waitConfirmation(writeSock);
+}
+
+void Connection::sendDelete(std::filesystem::path target) {
+    FileId fileId;
+
+    fileId = getFileId(target);
+    sendFileId(writeSock, fileId);
     waitConfirmation(writeSock);
 }
