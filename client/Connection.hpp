@@ -15,6 +15,7 @@ private:
     void createSocket(int &socketDescr, std::string ip, int port);
     void authenticate(int &socketDescr, std::string username);
     void setWriteConnection(int &socketDescr);
+    void sendChange(std::filesystem::path target);
 
 public:
     void connectToServer(std::string username, std::string ip, int port);

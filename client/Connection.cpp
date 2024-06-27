@@ -105,7 +105,7 @@ void Connection::upload(std::filesystem::path filepath) {
 
         std::cout << "Upload successful!\n";
     } catch (BrokenPipe) {
-        std::cout << "Connection broken during upload\n";
+        std::cout << "Connection broken during operation\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {
@@ -134,7 +134,7 @@ void Connection::download(std::filesystem::path filepath) {
 
         std::cout << "Download successful\n";
     } catch (BrokenPipe) {
-        std::cout << "Connection broken during upload\n";
+        std::cout << "Connection broken during operation\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {
@@ -158,7 +158,7 @@ void Connection::delete_(std::filesystem::path filepath) {
 
         std::cout << "File deleted successfully\n";
     } catch (BrokenPipe) {
-        std::cout << "Connection broken during upload\n";
+        std::cout << "Connection broken during operation\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {
@@ -182,7 +182,7 @@ std::vector<FileMeta> Connection::listServer() {
 
         sendOk(commandSock);
     } catch(BrokenPipe) {
-        std::cout << "Connection broken during upload\n";
+        std::cout << "Connection broken during operation\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {
@@ -197,14 +197,38 @@ void Connection::syncRead() {
 }
 
 void Connection::syncWrite(FileOpType op, std::filesystem::path target) {
-    switch (op) {
-        case FileOpType::FILE_MODIFY:
-            // TODO
-            break;
-        case FileOpType::FILE_DELETE:
-            // TODO
-            break;
-        default:
-            break;
+    try {
+        sendFileOperation(writeSock, FileOpType::FILE_MODIFY);
+        waitConfirmation(writeSock);
+
+        switch (op) {
+            case FileOpType::FILE_MODIFY:
+                sendChange(target);
+                break;
+            case FileOpType::FILE_DELETE:
+                // TODO
+                break;
+            default:
+                break;
+        }
+    } catch(BrokenPipe) {
+        std::cout << "Connection broken during operation\n";
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
     }
+}
+
+void Connection::sendChange(std::filesystem::path target) {
+    std::ifstream file;
+    FileId fileId;
+
+    fileId = getFileId(target);
+    sendFileId(writeSock, fileId);
+    waitConfirmation(writeSock);
+
+    file = std::ifstream(target);
+    sendFileData(writeSock, fileId.totalBlocks, file);
+    waitConfirmation(writeSock);
 }

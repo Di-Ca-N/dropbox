@@ -131,6 +131,25 @@ std::string receiveAuth(int sock_fd) {
     return std::string(msg.payload, msg.payload + msg.len);
 }
 
+FileId getFileId(std::filesystem::path target) {
+    std::string fileName;
+    FileId fileData;
+
+    fileData.fileSize = std::filesystem::file_size(target);
+
+    fileData.totalBlocks = fileData.fileSize / MAX_PAYLOAD;
+    if (fileData.fileSize % MAX_PAYLOAD > 0)
+        fileData.totalBlocks++;
+
+    fileName = target.filename();
+
+    fileData.filenameSize = fileName.size();
+
+    strncpy(fileData.filename, fileName.c_str(), fileData.filenameSize); 
+
+    return fileData;
+}
+
 void sendFileId(int sock_fd, FileId fileId) {
     sendMessage(sock_fd, MsgType::MSG_FILE_ID, &fileId, sizeof(fileId));
 }

@@ -73,6 +73,7 @@ void sendError(int sock_fd, std::string errorMsg);
 void waitConfirmation(int sock_fd);
 void sendAuth(int sock_fd, std::string username);
 std::string receiveAuth(int sock_fd);
+FileId getFileId(std::filesystem::path target);
 void sendFileId(int sock_fd, FileId fileId);
 FileId receiveFileId(int sock_fd);
 void sendFileData(int sock_fd, int numBlocks, std::ifstream& fileStream);
