@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <poll.h>
 
 #include "Connection.hpp"
 #include "Messages.hpp"
@@ -16,7 +17,7 @@ void Connection::connectToServer(std::string username, std::string ip, int port)
 
     createSocket(readSock, ip, port + 2);
     authenticate(readSock, username);
-    setReadConnection(readSock);
+    setReadConnection();
 }
 
 void Connection::createSocket(int &socketDescr, std::string ip, int port) {
@@ -51,10 +52,10 @@ void Connection::authenticate(int &socketDescr, std::string username) {
     }
 }
 
-void Connection::setReadConnection(int &socketDescr) {
+void Connection::setReadConnection() {
     try {
-        sendMessage(socketDescr, MsgType::MSG_SYNC_SERVER_TO_CLIENT, nullptr, 0);
-        waitConfirmation(socketDescr);
+        sendMessage(readSock, MsgType::MSG_SYNC_SERVER_TO_CLIENT, nullptr, 0);
+        waitConfirmation(readSock);
     } catch (BrokenPipe) {
         std::cout << "Connection closed during authentication\n";
     } catch (ErrorReply e) {
@@ -190,7 +191,70 @@ std::vector<FileMeta> Connection::listServer() {
 }
 
 void Connection::syncRead() {
-    // TODO
+    int pollStatus;
+    struct pollfd pfd;
+
+    pfd.fd = readSock;
+    pfd.events = POLLIN;
+
+    pollStatus = poll(&pfd, 1, 200);
+
+    if (pollStatus == -1) {
+        std::cout << "Error while trying to poll server\n";
+    } else if (pollStatus > 0) {
+        syncProcessRead();        
+    }
+}
+
+void Connection::syncProcessRead() {
+    FileOpType fileOp;
+    FileId fileId;
+
+    try {
+        fileOp = receiveFileOperation(readSock);
+        sendOk(readSock);
+
+        fileId = receiveFileId(readSock);
+        sendOk(readSock);
+
+        switch (fileOp) {
+            case FileOpType::FILE_MODIFY:
+                syncReadChange(fileId);
+                break;
+            case FileOpType::FILE_DELETE:
+                syncReadDelete(fileId);
+                break;
+            default:
+                break;
+        }
+    } catch(BrokenPipe) {
+        std::cout << "Connection broken during operation\n";
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
+    }
+}
+
+void Connection::syncReadChange(FileId &fileId) {
+    std::ofstream stream;
+    
+    try {
+        stream.open(
+                std::string(fileId.filename, fileId.filenameSize),
+                std::ofstream::binary
+        );
+        receiveFileData(readSock, fileId.totalBlocks, stream);
+        stream.close();
+    } catch(BrokenPipe) {
+        std::cout << "Connection broken during operation\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
+    }
+}
+
+void Connection::syncReadDelete(FileId &fileId) {
+    std::filesystem::remove(std::string(fileId.filename, fileId.filenameSize));
 }
 
 void Connection::syncWrite(FileOpType op, std::filesystem::path target) {

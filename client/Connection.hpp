@@ -14,7 +14,10 @@ private:
 
     void createSocket(int &socketDescr, std::string ip, int port);
     void authenticate(int &socketDescr, std::string username);
-    void setReadConnection(int &socketDescr);
+    void setReadConnection();
+    void syncProcessRead();
+    void syncReadChange(FileId &fileId);
+    void syncReadDelete(FileId &fileId);
 
 public:
     void connectToServer(std::string username, std::string ip, int port);
