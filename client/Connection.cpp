@@ -4,7 +4,15 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+<<<<<<< Updated upstream
 #include <poll.h>
+=======
+<<<<<<< Updated upstream
+=======
+#include <poll.h>
+#include <cstring>
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
 #include "Connection.hpp"
 #include "Messages.hpp"
@@ -190,6 +198,7 @@ std::vector<FileMeta> Connection::listServer() {
     return fileMetas;
 }
 
+<<<<<<< Updated upstream
 void Connection::syncRead() {
     int pollStatus;
     struct pollfd pfd;
@@ -206,18 +215,54 @@ void Connection::syncRead() {
     }
 }
 
+<<<<<<< Updated upstream
 void Connection::syncProcessRead() {
     FileOpType fileOp;
     FileId fileId;
 
     try {
         fileOp = receiveFileOperation(readSock);
+=======
+void Connection::syncWrite(FileOp op, std::string ogFilename, std::string newFilename) {
+=======
+std::optional<FileOperation> Connection::syncRead() {
+    int pollStatus;
+    struct pollfd pfd;
+    std::optional<FileOperation> operation;
+
+    operation = std::nullopt;
+
+    pfd.fd = readSock;
+    pfd.events = POLLIN;
+
+    pollStatus = poll(&pfd, 1, 200);
+
+    if (pollStatus == -1) {
+        std::cout << "Error while trying to poll server\n";
+    } else if (pollStatus > 0) {
+        operation = syncProcessRead();
+    }
+
+    return operation;
+}
+
+std::optional<FileOperation> Connection::syncProcessRead() {
+    FileId fileId;
+    FileOpType fileOpType;
+
+    try {
+        fileOpType = receiveFileOperation(readSock);
+>>>>>>> Stashed changes
         sendOk(readSock);
 
         fileId = receiveFileId(readSock);
         sendOk(readSock);
 
+<<<<<<< Updated upstream
         switch (fileOp) {
+=======
+        switch (fileOpType) {
+>>>>>>> Stashed changes
             case FileOpType::FILE_MODIFY:
                 syncReadChange(fileId);
                 break;
@@ -227,6 +272,11 @@ void Connection::syncProcessRead() {
             default:
                 break;
         }
+<<<<<<< Updated upstream
+=======
+
+        return makeFileOperation(fileId, fileOpType);
+>>>>>>> Stashed changes
     } catch(BrokenPipe) {
         std::cout << "Connection broken during operation\n";
     } catch (ErrorReply e) {
@@ -234,6 +284,23 @@ void Connection::syncProcessRead() {
     } catch (UnexpectedMsgType) {
         std::cout << "Unexpected response\n";
     }
+<<<<<<< Updated upstream
+=======
+
+    return std::nullopt;
+}
+
+FileOperation Connection::makeFileOperation(
+        FileId &fileId,
+        FileOpType &fileOpType) {
+    FileOperation fileOp;
+
+    fileOp.type = fileOpType;
+    fileOp.filenameSize = fileId.filenameSize;
+    strcpy(fileOp.filename, fileId.filename);
+
+    return fileOp;
+>>>>>>> Stashed changes
 }
 
 void Connection::syncReadChange(FileId &fileId) {
@@ -258,6 +325,10 @@ void Connection::syncReadDelete(FileId &fileId) {
 }
 
 void Connection::syncWrite(FileOpType op, std::filesystem::path target) {
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
     switch (op) {
         case FileOpType::FILE_MODIFY:
             // TODO
