@@ -33,6 +33,7 @@ add_executable(client
     client/CommandParser.cpp
     client/CommandCreator.cpp
     client/Command.cpp
+    client/EventHistory.cpp
     common/Messages.cpp
 )
 
