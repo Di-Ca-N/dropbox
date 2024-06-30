@@ -1,7 +1,7 @@
 #include <memory>
 #include <fcntl.h>
 #include <sys/unistd.h>
-#include <sys/inotify.h>
+#include <cstring>
 
 #include "ClientMonitor.hpp"
 #include "ClientState.hpp"
@@ -12,10 +12,13 @@
 #define MAX_EVENTS 10
 #define EVENT_BUF_LEN (MAX_EVENT_SIZE * MAX_EVENTS)
 
-ClientMonitor::ClientMonitor(std::shared_ptr<ClientState> clientState,
-        std::shared_ptr<Connection> connection) {
+ClientMonitor::ClientMonitor(
+        std::shared_ptr<ClientState> clientState,
+        std::shared_ptr<Connection> connection,
+        std::shared_ptr<EventHistory> history) {
     this->clientState = clientState;
     this->connection = connection;
+    this->history = history;
 }
 
 void ClientMonitor::run(std::string sync_dir) {
@@ -56,17 +59,49 @@ void ClientMonitor::setNonBlocking(int inotifyFd) {
 }
 
 void ClientMonitor::processEventBuffer(unsigned char buffer[], int bytesRead) {
-    unsigned char *eventPtr = buffer;
+    unsigned char *eventPtr;
+    inotify_event *event;
+
+    eventPtr = buffer;
+
     while (eventPtr < buffer + bytesRead) {
-        inotify_event *event = (inotify_event*) eventPtr;
+        event = (inotify_event*) eventPtr;
+
         if (event->mask & IN_CLOSE_WRITE || event->mask & IN_MOVED_TO)
-            connection->syncWrite(FileOpType::FILE_MODIFY, event->name);
+            sendOperationIfNotDuplicated(FileOpType::FILE_MODIFY, event);
+
         if (event->mask & IN_DELETE || event->mask & IN_MOVED_FROM)
-            connection->syncWrite(FileOpType::FILE_DELETE, event->name);
+            sendOperationIfNotDuplicated(FileOpType::FILE_DELETE, event);
+
         if (event->mask & IN_DELETE_SELF)
             clientState->setUntrackedIfNotClosing();
+
         eventPtr += sizeof(inotify_event) + event->len;
     }
+}
+
+void ClientMonitor::sendOperationIfNotDuplicated(
+        FileOpType opType,
+        inotify_event *event) {
+    auto operation = makeFileOperation(opType, event->name, event->len);
+
+    if (!history->popEvent(operation))
+        connection->syncWrite(opType, event->name);
+}
+
+FileOperation ClientMonitor::makeFileOperation(
+        FileOpType opType,
+        char *fileName,
+        size_t nameLength) {
+    size_t copyLength;
+    FileOperation operation;
+
+    operation.type = opType;
+    copyLength = std::min(nameLength, sizeof(operation.filename));
+    operation.filenameSize = copyLength;
+    strncpy(operation.filename, fileName, copyLength);
+
+    return operation;
 }
 
 int ClientMonitor::startEventTracking() {
