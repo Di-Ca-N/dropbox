@@ -10,7 +10,7 @@ class SyncServerToClientHandler : public Handler {
         std::filesystem::path baseDir;
 
         void handleFileModify(std::string filename);
-        void handleFileDelete();
+        void handleFileDelete(std::string filename);
         void handleFileMove();
     public:
         SyncServerToClientHandler(std::string username, int clientSocket, DeviceManager *deviceManager);

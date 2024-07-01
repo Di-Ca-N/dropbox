@@ -38,7 +38,7 @@ void handleClient(int clientSocket) {
                     DownloadHandler(username, clientSocket).run();
                     break;
                 case MsgType::MSG_DELETE:
-                    DeleteHandler(username, clientSocket).run();
+                    DeleteHandler(username, clientSocket, deviceManagers[username]).run();
                     break;
                 case MsgType::MSG_LIST_SERVER:
                     ListServerHandler(username, clientSocket).run();

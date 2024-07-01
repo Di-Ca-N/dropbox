@@ -10,19 +10,16 @@ SyncServerToClientHandler::SyncServerToClientHandler(std::string username, int c
 }
 
 void SyncServerToClientHandler::run(){
-    std::cout << "SyncServerToClient started\n";
     try {
         Device device = deviceManager->registerDevice();
 
         sendOk(clientSocket);
-        
+
         while (true) {
-            std::cout << "Waiting for file op\n";
             FileOperation op = device.queue->get();
-            std::cout << "Got file op\n";
-            sendFileOperation(clientSocket, op.type);
 
             try {
+                sendFileOperation(clientSocket, op.type);
                 waitConfirmation(clientSocket);
             } catch (ErrorReply reply) {
                 break;
@@ -30,10 +27,10 @@ void SyncServerToClientHandler::run(){
 
             switch (op.type) {
                 case FileOpType::FILE_MODIFY:
-                    this->handleFileModify(std::string(op.filename, op.filename+op.filenameSize));
+                    this->handleFileModify(std::string(op.filename, op.filenameSize));
                     break;
                 case FileOpType::FILE_DELETE:
-                    //this->handleFileDelete();
+                    this->handleFileDelete(std::string(op.filename, op.filenameSize));
                     break;
                 case FileOpType::FILE_MOVE:
                     //this->handleFileMove();
@@ -60,6 +57,19 @@ void SyncServerToClientHandler::handleFileModify(std::string filename) {
         waitConfirmation(clientSocket);
 
         sendFileData(clientSocket, fid.totalBlocks, file);
+        waitConfirmation(clientSocket);
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    }
+}
+
+void SyncServerToClientHandler::handleFileDelete(std::string filename) {
+    try {
+        FileId fileId;
+        filename.copy(fileId.filename, MAX_FILENAME);
+        fileId.filenameSize = filename.size();
+
+        sendFileId(clientSocket, fileId);
         waitConfirmation(clientSocket);
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";

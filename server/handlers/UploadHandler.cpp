@@ -18,7 +18,7 @@ void UploadHandler::run(){
 
         FileId fileId = receiveFileId(clientSocket);
         
-        std::string filename(fileId.filename, fileId.filename+fileId.filenameSize);
+        std::string filename(fileId.filename, fileId.filenameSize);
 
         std::ofstream file(baseDir / filename);
 
