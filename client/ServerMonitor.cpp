@@ -1,5 +1,6 @@
 #include <memory>
 #include <unistd.h>
+#include <iostream>
 
 #include "ServerMonitor.hpp"
 #include "ClientState.hpp"
@@ -16,6 +17,10 @@ ServerMonitor::ServerMonitor(
 
 void ServerMonitor::run() {
     std::optional<FileOperation> operation;
+
+    // FIXME: Essa é uma forma MUITO ruim de esperar que o estado seja ativo. 
+    // Precisamos disso para garantir que o próximo loop vai entrar, senão o syncRead nunca inicia
+    while (clientState->get() != AppState::STATE_ACTIVE);
 
     while (clientState->get() == AppState::STATE_ACTIVE) {
         operation = connection->syncRead();
