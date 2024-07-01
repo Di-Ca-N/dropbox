@@ -22,16 +22,14 @@ inline int buildFileIdFromPath(std::filesystem::path filepath, FileId *fileId) {
     if (!file) {
         return -1;
     }
-    
-    file.seekg(std::ios::end);
-    u_int64_t fileSize = file.tellg();
-    file.seekg(std::ios::beg);
+
+    u_int64_t fileSize = std::filesystem::file_size(filepath);
     
     std::string filename = filepath.filename().string();
 
     fileId->totalBlocks = getNumBlocks(fileSize, MAX_PAYLOAD),
     fileId->fileSize = fileSize,
-    fileId->filenameSize = static_cast<u_int8_t>(filename.length() + 1),
+    fileId->filenameSize = static_cast<u_int8_t>(filename.length()),
     filename.copy(fileId->filename, MAX_FILENAME);
     return 0;
 }
