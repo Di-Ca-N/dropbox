@@ -4,9 +4,10 @@
 #include <filesystem>
 #include <iostream>
 
-UploadHandler::UploadHandler(std::string username, int clientSocket) {
+UploadHandler::UploadHandler(std::string username, int clientSocket, DeviceManager *deviceManager) {
     this->clientSocket = clientSocket;
     this->username = username;
+    this->deviceManager = deviceManager;
 }
 
 void UploadHandler::run(){
@@ -14,7 +15,7 @@ void UploadHandler::run(){
 
     try {
         sendOk(clientSocket);
-        
+
         FileId fileId = receiveFileId(clientSocket);
         
         std::string filename(fileId.filename, fileId.filename+fileId.filenameSize);
@@ -30,6 +31,16 @@ void UploadHandler::run(){
         receiveFileData(clientSocket, fileId.totalBlocks, file);
 
         sendOk(clientSocket);
+        
+        FileOperation op = {
+            .type=FileOpType::FILE_MODIFY,
+        };
+
+        filename.copy(op.filename, MAX_FILENAME);
+        op.filenameSize = fileId.filenameSize;
+
+        deviceManager->notifyAllDevices(op);
+
     } catch (UnexpectedMsgType) {
         sendError(clientSocket, "Unexpected message");
     }

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 #include <mutex>
 #include <queue>
@@ -12,6 +14,8 @@ class SyncQueue {
 
     public:
         SyncQueue();
+        // Pushes a FileOperation into the queue
         void push(FileOperation fp);
+        // Tries to get a FileOperation from the Queue. Blocks until an operation is available
         FileOperation get();
 };
