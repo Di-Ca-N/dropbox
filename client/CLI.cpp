@@ -7,8 +7,7 @@
 #include "CLI.hpp"
 #include "ClientState.hpp"
 #include "Command.hpp"
-
-#define SYNC_DIR "sync_dir"
+#include "ClientConfig.hpp"
 
 void CLI::run(std::string username, std::string ip, int port) {
     bool newLine;

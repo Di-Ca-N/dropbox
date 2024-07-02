@@ -10,6 +10,7 @@
 #include "Connection.hpp"
 #include "Messages.hpp"
 #include "utils.hpp"
+#include "ClientConfig.hpp"
 
 
 void Connection::connectToServer(std::string username, std::string ip, int port) {
@@ -256,7 +257,7 @@ FileOperation Connection::makeFileOperation(
 
 void Connection::syncReadChange(FileId &fileId) {
     std::ofstream stream;
-    std::filesystem::path syncDir("sync_dir"); // FIXME: Pegar o nome desse diretório do jeito certo
+    std::filesystem::path syncDir(SYNC_DIR);
     
     try {
         std::string filename(fileId.filename, fileId.filenameSize);
@@ -276,7 +277,7 @@ void Connection::syncReadChange(FileId &fileId) {
 }
 
 void Connection::syncReadDelete(FileId &fileId) {
-    std::filesystem::path syncDir("sync_dir"); // FIXME: Pegar o nome desse diretório do jeito certo
+    std::filesystem::path syncDir(SYNC_DIR);
     std::string filename(fileId.filename, fileId.filenameSize);
     std::filesystem::remove(syncDir / filename);
     sendOk(readSock);
