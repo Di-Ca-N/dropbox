@@ -10,7 +10,6 @@
 
 class Connection {
 private:
-    int serverSock = -1;
     int commandSock = -1;
     int readSock = -1;
 
