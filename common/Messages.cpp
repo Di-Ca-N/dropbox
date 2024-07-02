@@ -149,6 +149,7 @@ void sendFileData(int sock_fd, int numBlocks, std::ifstream &fileStream) {
 }
 
 void receiveFileData(int sock_fd, int numBlocks, std::ofstream &fileStream) {
+
     for (int i = 0; i < numBlocks; i++) {
         Message msg = receiveMessage(sock_fd);
         if (msg.type != MsgType::MSG_FILEPART)
@@ -178,5 +179,5 @@ void sendFileOperation(int sock_fd, FileOpType opType) {
 }
 
 FileOpType receiveFileOperation(int sock_fd) {
-    return receivePayload<FileOpType>(sock_fd, MsgType::MSG_FILE_METADATA);
+    return receivePayload<FileOpType>(sock_fd, MsgType::MSG_FILE_OPERATION);
 }

@@ -7,14 +7,14 @@
 #include "CLI.hpp"
 #include "ClientState.hpp"
 #include "Command.hpp"
-
-#define SYNC_DIR "sync_dir"
+#include "ClientConfig.hpp"
 
 void CLI::run(std::string username, std::string ip, int port) {
     bool newLine;
     struct pollfd cinFd;
 
     makeConnection(username, ip, port);
+    makeHistory();
     startClientState(AppState::STATE_UNTRACKED);
     initializeCommandParser();
     initializeSyncDir();
@@ -41,6 +41,10 @@ void CLI::run(std::string username, std::string ip, int port) {
 void CLI::makeConnection(std::string username, std::string ip, int port) {
     connection = std::make_shared<Connection>(Connection());
     connection->connectToServer(username, ip, port);
+}
+
+void CLI::makeHistory() {
+    eventHistory = std::make_shared<EventHistory>();
 }
 
 void CLI::startClientState(AppState state) {
@@ -95,7 +99,7 @@ void CLI::restartServerThread() {
         serverThread.join();
 
     serverMonitor = std::make_unique<ServerMonitor>(
-            ServerMonitor(clientState, connection)
+            ServerMonitor(clientState, connection, eventHistory)
     );
 
     serverThread = std::thread(

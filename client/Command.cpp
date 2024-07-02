@@ -102,11 +102,13 @@ void GetSyncDir::execute() {
             (sharedState = clientState.lock()) &&
             (sharedConnection = connection.lock())) {
         if (sharedState->get() == AppState::STATE_UNTRACKED) {
+            // must be executed before to avoid server thread closing
+            // before client thread opens
+            sharedState->setActiveIfNotClosing();
+
             sharedOwner->restartServerThread();
             sharedOwner->restartClientThread();
         }
-
-        sharedState->setActiveIfNotClosing();
     }
 }
 

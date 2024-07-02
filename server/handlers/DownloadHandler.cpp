@@ -17,7 +17,7 @@ void DownloadHandler::run() {
     try {
         sendOk(clientSocket);
         FileId fid = receiveFileId(clientSocket);
-        std::string filename(fid.filename, fid.filename + fid.filenameSize);
+        std::string filename(fid.filename, fid.filenameSize);
         std::filesystem::path filepath = baseDir / filename;
 
         std::ifstream file(filepath, std::ios::binary);

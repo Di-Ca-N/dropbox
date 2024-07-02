@@ -4,13 +4,23 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <optional>
 
 #include "Messages.hpp"
-#include "FileOp.hpp"
 
 class Connection {
 private:
-    int serverSock = -1;
+    int commandSock = -1;
+    int readSock = -1;
+
+    void createSocket(int &socketDescr, std::string ip, int port);
+    void authenticate(int &socketDescr, std::string username);
+    void setReadConnection();
+
+    std::optional<FileOperation> syncProcessRead();
+    void syncReadChange(FileId &fileId);
+    void syncReadDelete(FileId &fileId);
+    FileOperation makeFileOperation(FileId &fileId, FileOpType &fileOpType);
 
 public:
     void connectToServer(std::string username, std::string ip, int port);
@@ -18,8 +28,9 @@ public:
     void download(std::filesystem::path filepath);
     void delete_(std::filesystem::path filepath);
     std::vector<FileMeta> listServer();
-    void syncRead();
-    void syncWrite(FileOp op, std::string ogFilename, std::string newFilename);
+
+    std::optional<FileOperation> syncRead();
+    void syncWrite(FileOpType op, std::filesystem::path target);
 };
 
 #endif

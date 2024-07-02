@@ -5,7 +5,7 @@
 
 #include "ClientMonitor.hpp"
 #include "ClientState.hpp"
-#include "FileOp.hpp"
+#include "Messages.hpp"
 #include "Connection.hpp"
 
 #define MAX_EVENT_SIZE (sizeof(struct inotify_event) + 256)
@@ -60,9 +60,9 @@ void ClientMonitor::processEventBuffer(unsigned char buffer[], int bytesRead) {
     while (eventPtr < buffer + bytesRead) {
         inotify_event *event = (inotify_event*) eventPtr;
         if (event->mask & IN_CLOSE_WRITE || event->mask & IN_MOVED_TO)
-            connection->syncWrite(FileOp::OP_CHANGE, event->name, event->name);
+            connection->syncWrite(FileOpType::FILE_MODIFY, event->name);
         if (event->mask & IN_DELETE || event->mask & IN_MOVED_FROM)
-            connection->syncWrite(FileOp::OP_DELETE, event->name, event->name);
+            connection->syncWrite(FileOpType::FILE_DELETE, event->name);
         if (event->mask & IN_DELETE_SELF)
             clientState->setUntrackedIfNotClosing();
         eventPtr += sizeof(inotify_event) + event->len;
