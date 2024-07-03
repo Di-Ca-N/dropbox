@@ -12,14 +12,19 @@
 #include "handlers/DownloadHandler.hpp"
 #include "handlers/DeleteHandler.hpp"
 #include "handlers/ListServerHandler.hpp"
+#include "handlers/SyncServerToClientHandler.hpp"
 #include "DeviceManager.hpp"
 
-std::map<std::string, std::unique_ptr<DeviceManager>> deviceManagers;
+std::map<std::string, DeviceManager*> deviceManagers;
 
 void handleClient(int clientSocket) {
     try {
         std::string username = receiveAuth(clientSocket);
         std::filesystem::create_directory(username);
+
+        if (deviceManagers.find(username) == deviceManagers.end()) {
+            deviceManagers[username] = new DeviceManager(username);
+        }
         sendOk(clientSocket);
 
         while (true) {
@@ -27,17 +32,20 @@ void handleClient(int clientSocket) {
 
             switch(msg.type) {
                 case MsgType::MSG_UPLOAD:
-                    UploadHandler(username, clientSocket).run();
+                    UploadHandler(username, clientSocket, deviceManagers[username]).run();
                     break;
                 case MsgType::MSG_DOWNLOAD:
                     DownloadHandler(username, clientSocket).run();
                     break;
                 case MsgType::MSG_DELETE:
-                    DeleteHandler(username, clientSocket).run();
+                    DeleteHandler(username, clientSocket, deviceManagers[username]).run();
                     break;
                 case MsgType::MSG_LIST_SERVER:
                     ListServerHandler(username, clientSocket).run();
                     break;
+                case MsgType::MSG_SYNC_SERVER_TO_CLIENT:
+                    SyncServerToClientHandler(username, clientSocket, deviceManagers[username]).run();
+                    goto out;
                 default:
                     sendError(clientSocket, "Unrecognized command");
                     break;
@@ -46,7 +54,7 @@ void handleClient(int clientSocket) {
     } catch (BrokenPipe) {
         std::cout << "Client disconnected\n";
     }
-
+out:
     close(clientSocket);
 }
 
@@ -87,6 +95,8 @@ int main(int argc, char *argv[]) {
     std::cout << "Server listening on port " << argv[1] << "\n";
 
     std::vector<std::thread> openConnections;
+    //std::filesystem::path dataDir = std::filesystem::current_path() / "data";
+    //std::filesystem::create_directories(dataDir);
     std::filesystem::current_path(std::filesystem::current_path() / "data");
     int c = 0;
     while (true) {

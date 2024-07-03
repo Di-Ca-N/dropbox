@@ -4,10 +4,13 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <poll.h>
+#include <cstring>
 
 #include "Connection.hpp"
 #include "Messages.hpp"
 #include "utils.hpp"
+#include "ClientConfig.hpp"
 
 
 void Connection::connectToServer(std::string username, std::string ip, int port) {
@@ -17,6 +20,10 @@ void Connection::connectToServer(std::string username, std::string ip, int port)
     createSocket(writeSock, ip, port + 1);
     authenticate(writeSock, username);
     setWriteConnection(writeSock);
+
+    createSocket(readSock, ip, port);
+    authenticate(readSock, username);
+    setReadConnection();
 }
 
 void Connection::createSocket(int &socketDescr, std::string ip, int port) {
@@ -67,6 +74,19 @@ void Connection::setWriteConnection(int &socketDescr) {
     }
 }
 
+void Connection::setReadConnection() {
+    try {
+        sendMessage(readSock, MsgType::MSG_SYNC_SERVER_TO_CLIENT, nullptr, 0);
+        waitConfirmation(readSock);
+    } catch (BrokenPipe) {
+        std::cout << "Connection closed during authentication\n";
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
+    }
+}
+
 void Connection::upload(std::filesystem::path filepath) {
     if (commandSock == -1) {
         std::cout << "Server connection is closed\n";
@@ -80,9 +100,7 @@ void Connection::upload(std::filesystem::path filepath) {
         return;
     }
     
-    file.seekg(std::ios::end);
-    u_int64_t fileSize = file.tellg();
-    file.seekg(std::ios::beg);
+    u_int64_t fileSize = std::filesystem::file_size(filepath);
     
     std::string filename = filepath.filename().string();
 
@@ -119,7 +137,7 @@ void Connection::download(std::filesystem::path filepath) {
         sendMessage(commandSock, MsgType::MSG_DOWNLOAD, nullptr, 0);
         waitConfirmation(commandSock);
 
-        FileId fid = {.filenameSize = static_cast<u_int8_t>(filename.size() + 1)};
+        FileId fid = {.filenameSize = static_cast<u_int8_t>(filename.size())};
         filename.copy(fid.filename, MAX_FILENAME);
 
         sendFileId(commandSock, fid);
@@ -147,7 +165,7 @@ void Connection::delete_(std::filesystem::path filepath) {
 
     FileId fid;
     filename.copy(fid.filename, MAX_FILENAME);
-    fid.filenameSize = static_cast<u_int8_t>(filename.size() + 1);
+    fid.filenameSize = static_cast<u_int8_t>(filename.size());
     
     try {
         sendMessage(commandSock, MsgType::MSG_DELETE, nullptr, 0);
@@ -192,8 +210,95 @@ std::vector<FileMeta> Connection::listServer() {
     return fileMetas;
 }
 
-void Connection::syncRead() {
-    // TODO
+
+std::optional<FileOperation> Connection::syncRead() {
+    int pollStatus;
+    struct pollfd pfd;
+
+    pfd.fd = readSock;
+    pfd.events = POLLIN;
+
+    pollStatus = poll(&pfd, 1, 200);
+
+    if (pollStatus == -1) {
+        std::cout << "Error while trying to poll server\n";
+    } else if (pollStatus > 0) {
+        return syncProcessRead();        
+    }
+    return std::nullopt;
+}
+
+std::optional<FileOperation> Connection::syncProcessRead() {
+    FileId fileId;
+    FileOpType fileOpType;
+
+    try {
+        fileOpType = receiveFileOperation(readSock);
+        sendOk(readSock);
+
+        fileId = receiveFileId(readSock);
+        sendOk(readSock);
+        switch (fileOpType) {
+            case FileOpType::FILE_MODIFY:
+                syncReadChange(fileId);
+                break;
+            case FileOpType::FILE_DELETE:
+                syncReadDelete(fileId);
+                break;
+            default:
+                break;
+        }
+
+        return makeFileOperation(fileId, fileOpType);
+    } catch(BrokenPipe) {
+        std::cout << "Connection broken during operation\n";
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
+    }
+
+    return std::nullopt;
+}
+
+FileOperation Connection::makeFileOperation(
+        FileId &fileId,
+        FileOpType &fileOpType) {
+    FileOperation fileOp;
+
+    fileOp.type = fileOpType;
+    fileOp.filenameSize = fileId.filenameSize;
+    strcpy(fileOp.filename, fileId.filename);
+
+    return fileOp;
+}
+
+void Connection::syncReadChange(FileId &fileId) {
+    std::ofstream stream;
+    std::filesystem::path syncDir(SYNC_DIR);
+    
+    try {
+        std::string filename(fileId.filename, fileId.filenameSize);
+        std::filesystem::path filepath = syncDir / filename;
+        stream.open(
+                filepath,
+                std::ofstream::binary
+        );
+        receiveFileData(readSock, fileId.totalBlocks, stream);
+        stream.close();
+        sendOk(readSock);
+    } catch(BrokenPipe) {
+        std::cout << "Connection broken during operation\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
+    }
+}
+
+void Connection::syncReadDelete(FileId &fileId) {
+    std::filesystem::path syncDir(SYNC_DIR);
+    std::string filename(fileId.filename, fileId.filenameSize);
+    std::filesystem::remove(syncDir / filename);
+    sendOk(readSock);
 }
 
 void Connection::syncWrite(FileOpType op, std::filesystem::path target) {
@@ -213,13 +318,12 @@ void Connection::syncWrite(FileOpType op, std::filesystem::path target) {
         }
     } catch(BrokenPipe) {
         std::cout << "Connection broken during operation\n";
-    } catch (ErrorReply e) {
-        std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {
         std::cout << "Unexpected response\n";
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
     }
 }
-
 void Connection::sendChange(std::filesystem::path target) {
     std::ifstream file;
     FileId fileId;
