@@ -12,6 +12,9 @@
 #include "handlers/DownloadHandler.hpp"
 #include "handlers/DeleteHandler.hpp"
 #include "handlers/ListServerHandler.hpp"
+#include "DeviceManager.hpp"
+
+std::map<std::string, std::unique_ptr<DeviceManager>> deviceManagers;
 
 void handleClient(int clientSocket) {
     try {

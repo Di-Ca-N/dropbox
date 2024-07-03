@@ -19,6 +19,8 @@ add_executable(server
     server/handlers/DeleteHandler.cpp
     server/handlers/DownloadHandler.cpp
     server/handlers/ListServerHandler.cpp
+    server/SyncQueue.cpp
+    server/DeviceManager.cpp
     common/Messages.cpp
 )
 add_executable(client
