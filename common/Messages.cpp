@@ -21,6 +21,8 @@ std::map<MsgType, std::string> msgTypeNames = {
     {MsgType::MSG_FILE_OPERATION, "MSG_FILE_OPERATION"},
     {MsgType::MSG_NUM_FILES, "MSG_NUM_FILES"},
     {MsgType::MSG_FILE_METADATA, "MSG_FILE_METADATA"},
+    {MsgType::MSG_DEVICE_ID, "MSG_DEVICE_ID"},
+    {MsgType::MSG_REGISTER_DEVICE, "MSG_REGISTER_DEVICE"},
 };
 
 std::string toString(MsgType type) { return msgTypeNames[type]; }
@@ -129,6 +131,14 @@ std::string receiveAuth(int sock_fd) {
     if (msg.type != MsgType::MSG_AUTH)
         throw UnexpectedMsgType(MsgType::MSG_AUTH, msg.type);
     return std::string(msg.payload, msg.payload + msg.len);
+}
+
+void sendDeviceId(int sock_fd, int deviceId) {
+    sendMessage(sock_fd, MsgType::MSG_DEVICE_ID, &deviceId, sizeof(deviceId));
+}
+
+int receiveDeviceId(int sock_fd) {
+    return receivePayload<int>(sock_fd, MsgType::MSG_DEVICE_ID);
 }
 
 FileId getFileId(std::filesystem::path target) {

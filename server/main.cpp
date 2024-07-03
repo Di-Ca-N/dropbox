@@ -43,6 +43,9 @@ void handleClient(int clientSocket) {
                 case MsgType::MSG_LIST_SERVER:
                     ListServerHandler(username, clientSocket).run();
                     break;
+                case MsgType::MSG_REGISTER_DEVICE:
+                    RegisterDeviceHandler(username, clientSocket, deviceManagers[username]).run();
+                    break;
                 case MsgType::MSG_SYNC_SERVER_TO_CLIENT:
                     SyncServerToClientHandler(username, clientSocket, deviceManagers[username]).run();
                     goto out;

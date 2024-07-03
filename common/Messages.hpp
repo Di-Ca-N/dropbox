@@ -29,6 +29,8 @@ enum class MsgType : u_int8_t {
     MSG_FILE_METADATA,
     MSG_OK,
     MSG_ERROR,
+    MSG_DEVICE_ID,
+    MSG_REGISTER_DEVICE,
 };
 
 // Helper function to get a string representation of MsgType
@@ -73,6 +75,8 @@ void sendError(int sock_fd, std::string errorMsg);
 void waitConfirmation(int sock_fd);
 void sendAuth(int sock_fd, std::string username);
 std::string receiveAuth(int sock_fd);
+void sendDeviceId(int sock_fd);
+int receiveDeviceId(int sock_fd);
 FileId getFileId(std::filesystem::path target);
 void sendFileId(int sock_fd, FileId fileId);
 FileId receiveFileId(int sock_fd);
