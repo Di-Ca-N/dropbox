@@ -73,7 +73,7 @@ void SyncClientToServerHandler::handleFileDelete() {
     std::string filename(fileId.filename, fileId.filenameSize);
     std::filesystem::path filepath = baseDir / filename;
 
-    std::cout << "Removing filepath " << filepath << "\n";
+    //std::cout << "Removing filepath " << filepath << "\n";
     std::filesystem::remove(filepath);
 
     FileOperation op;
