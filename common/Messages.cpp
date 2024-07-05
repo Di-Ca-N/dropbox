@@ -104,7 +104,7 @@ void sendOk(int sock_fd) { sendMessage(sock_fd, MsgType::MSG_OK, nullptr, 0); }
 
 void sendError(int sock_fd, std::string errorMsg) {
     sendMessage(sock_fd, MsgType::MSG_ERROR, errorMsg.data(),
-                errorMsg.length() + 1);
+                errorMsg.length());
 }
 
 void waitConfirmation(int sock_fd) {
@@ -120,25 +120,12 @@ void waitConfirmation(int sock_fd) {
     }
 }
 
-void sendAuth(int sock_fd, std::string username) {
-    sendMessage(sock_fd, MsgType::MSG_AUTH, username.data(),
-                username.length() + 1);
+void sendAuth(int sock_fd, AuthData authData) {
+    sendMessage(sock_fd, MsgType::MSG_AUTH, &authData, sizeof(authData));
 }
 
-std::string receiveAuth(int sock_fd) {
-    Message msg = receiveMessage(sock_fd);
-    // printMsg(&msg);
-    if (msg.type != MsgType::MSG_AUTH)
-        throw UnexpectedMsgType(MsgType::MSG_AUTH, msg.type);
-    return std::string(msg.payload, msg.payload + msg.len);
-}
-
-void sendDeviceId(int sock_fd, int deviceId) {
-    sendMessage(sock_fd, MsgType::MSG_DEVICE_ID, &deviceId, sizeof(deviceId));
-}
-
-int receiveDeviceId(int sock_fd) {
-    return receivePayload<int>(sock_fd, MsgType::MSG_DEVICE_ID);
+AuthData receiveAuth(int sock_fd) {
+    return receivePayload<AuthData>(sock_fd, MsgType::MSG_AUTH);
 }
 
 FileId getFileId(std::filesystem::path target) {

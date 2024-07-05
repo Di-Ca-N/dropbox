@@ -69,14 +69,20 @@ typedef struct {
     time_t cTime;
 } FileMeta;
 
+// Struct with the required data to perform authentication.
+// If the devices still does not have an Id, it must be set to 0.
+typedef struct {
+    char username[MAX_USERNAME];
+    uint8_t usernameLen;
+    int deviceId;
+} AuthData;
+
 /* =========== HIGH-LEVEL API ============= */
 void sendOk(int sock_fd);
 void sendError(int sock_fd, std::string errorMsg);
 void waitConfirmation(int sock_fd);
-void sendAuth(int sock_fd, std::string username);
-std::string receiveAuth(int sock_fd);
-void sendDeviceId(int sock_fd);
-int receiveDeviceId(int sock_fd);
+void sendAuth(int sock_fd, AuthData authData);
+AuthData receiveAuth(int sock_fd);
 FileId getFileId(std::filesystem::path target);
 void sendFileId(int sock_fd, FileId fileId);
 FileId receiveFileId(int sock_fd);

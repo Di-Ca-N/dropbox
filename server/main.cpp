@@ -13,41 +13,55 @@
 #include "handlers/DeleteHandler.hpp"
 #include "handlers/ListServerHandler.hpp"
 #include "handlers/SyncServerToClientHandler.hpp"
+#include "handlers/SyncClientToServerHandler.hpp"
 #include "DeviceManager.hpp"
 
 std::map<std::string, DeviceManager*> deviceManagers;
 
 void handleClient(int clientSocket) {
     try {
-        std::string username = receiveAuth(clientSocket);
+        AuthData authData = receiveAuth(clientSocket);
+        std::string username(authData.username, authData.usernameLen);
         std::filesystem::create_directory(username);
 
         if (deviceManagers.find(username) == deviceManagers.end()) {
             deviceManagers[username] = new DeviceManager(username);
         }
-        sendOk(clientSocket);
+
+        DeviceManager *userDeviceManager = deviceManagers[username];
+
+        if (authData.deviceId == 0) { // Unknown device
+            Device device = userDeviceManager->registerDevice();
+            authData.deviceId = device.id;
+            std::cout << "User " << username << " connected a new device. Assigned id " << device.id << "\n";
+        }
+
+        std::cout << "Client " << username << " authenticated with device " << authData.deviceId << "\n";
+        sendAuth(clientSocket, authData);
+
+        Device device = userDeviceManager->getDevice(authData.deviceId);
 
         while (true) {
             Message msg = receiveMessage(clientSocket);
 
             switch(msg.type) {
                 case MsgType::MSG_UPLOAD:
-                    UploadHandler(username, clientSocket, deviceManagers[username]).run();
+                    UploadHandler(username, clientSocket, userDeviceManager).run();
                     break;
                 case MsgType::MSG_DOWNLOAD:
                     DownloadHandler(username, clientSocket).run();
                     break;
                 case MsgType::MSG_DELETE:
-                    DeleteHandler(username, clientSocket, deviceManagers[username]).run();
+                    DeleteHandler(username, clientSocket, userDeviceManager).run();
                     break;
                 case MsgType::MSG_LIST_SERVER:
                     ListServerHandler(username, clientSocket).run();
                     break;
-                case MsgType::MSG_REGISTER_DEVICE:
-                    RegisterDeviceHandler(username, clientSocket, deviceManagers[username]).run();
-                    break;
                 case MsgType::MSG_SYNC_SERVER_TO_CLIENT:
-                    SyncServerToClientHandler(username, clientSocket, deviceManagers[username]).run();
+                    SyncServerToClientHandler(username, clientSocket, device).run();
+                    goto out;
+                case MsgType::MSG_SYNC_CLIENT_TO_SERVER:
+                    SyncClientToServerHandler(username, clientSocket, device.id, userDeviceManager).run();
                     goto out;
                 default:
                     sendError(clientSocket, "Unrecognized command");
@@ -98,13 +112,12 @@ int main(int argc, char *argv[]) {
     std::cout << "Server listening on port " << argv[1] << "\n";
 
     std::vector<std::thread> openConnections;
-    //std::filesystem::path dataDir = std::filesystem::current_path() / "data";
-    //std::filesystem::create_directories(dataDir);
+    std::filesystem::path dataDir = std::filesystem::current_path() / "data";
+    std::filesystem::create_directories(dataDir);
     std::filesystem::current_path(std::filesystem::current_path() / "data");
     int c = 0;
     while (true) {
         int clientSocket = accept(sock_fd, nullptr, nullptr);
-        std::cout << "Cliente conectou\n";
         openConnections.push_back(std::thread(handleClient, clientSocket));
         c++;
     }

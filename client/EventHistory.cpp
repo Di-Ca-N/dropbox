@@ -1,5 +1,5 @@
 #include <cstring>
-
+#include <iostream>
 #include "EventHistory.hpp"
 
 EventHistory::EventHistory() {
@@ -7,6 +7,7 @@ EventHistory::EventHistory() {
 }
 
 void EventHistory::pushEvent(FileOperation event) {
+    //std::cout << "Pushing event on " << std::string(event.filename, event.filenameSize).size() << "\n";
     std::lock_guard<std::mutex> lock(mtx);
     history.push_back(event);
 }
@@ -17,8 +18,9 @@ bool EventHistory::popEvent(FileOperation event) {
     std::lock_guard<std::mutex> lock(mtx);
 
     for (iter = history.begin(); iter != history.end(); iter++) {
-        if (typesAreEqual(*iter, event)
-                && filenamesAreEqual(*iter, event)) {
+        std::string eventType = event.type == FileOpType::FILE_MODIFY ? "Change" : "Other";
+        //std::cout << "History contains event of type " << eventType << " for file " << std::string(event.filename, event.filenameSize) << "\n";
+        if (typesAreEqual(*iter, event) && filenamesAreEqual(*iter, event)) {
             break;
         }
     }
@@ -32,18 +34,18 @@ bool EventHistory::popEvent(FileOperation event) {
 }
 
 bool EventHistory::typesAreEqual(FileOperation &eventA, FileOperation &eventB) {
+    //std::cout << "Type comparison: " << (eventA.type == eventB.type) << "\n";
     return (eventA.type == eventB.type);
 }
 
 bool EventHistory::filenamesAreEqual(
         FileOperation &eventA,
-        FileOperation &eventB) { 
-    if (eventA.filenameSize != eventB.filenameSize)
-        return false;
+        FileOperation &eventB) {
+    std::string filenameA(eventA.filename, eventA.filenameSize);
+    std::string filenameB(eventB.filename, eventB.filenameSize);
+    //std::cout << "NameA: " << filenameA << filenameA.size() << " NameB: " << filenameB << filenameB.size() << "\n";
+    //std::cout << "Name comparison: " << (filenameA == filenameB) << "\n";
 
-    if (strncmp(eventA.filename, eventB.filename, eventA.filenameSize) == 0)
-        return true;
-
-    return false;
+    return filenameA.compare(filenameB) == 0;
 }
 

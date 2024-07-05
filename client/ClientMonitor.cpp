@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <sys/unistd.h>
 #include <cstring>
+#include <iostream>
 
 #include "ClientMonitor.hpp"
 #include "ClientState.hpp"
@@ -67,11 +68,15 @@ void ClientMonitor::processEventBuffer(unsigned char buffer[], int bytesRead) {
     while (eventPtr < buffer + bytesRead) {
         event = (inotify_event*) eventPtr;
 
-        if (event->mask & IN_CLOSE_WRITE || event->mask & IN_MOVED_TO)
+        if (event->mask & IN_CLOSE_WRITE || event->mask & IN_MOVED_TO) {
+            //std::cout << "MODIFY\n";
             sendOperationIfNotDuplicated(FileOpType::FILE_MODIFY, event);
+        }
 
-        if (event->mask & IN_DELETE || event->mask & IN_MOVED_FROM)
+        if (event->mask & IN_DELETE || event->mask & IN_MOVED_FROM){
+            //std::cout << "DELETE\n";
             sendOperationIfNotDuplicated(FileOpType::FILE_DELETE, event);
+        }
 
         if (event->mask & IN_DELETE_SELF)
             clientState->setUntrackedIfNotClosing();
@@ -84,6 +89,8 @@ void ClientMonitor::sendOperationIfNotDuplicated(
         FileOpType opType,
         inotify_event *event) {
     auto operation = makeFileOperation(opType, event->name, event->len);
+    std::string eventType = operation.type == FileOpType::FILE_MODIFY ? "Change" : "Other";
+    //std::cout << "Registered event " << eventType << " on file " << std::string(operation.filename, operation.filenameSize).size() << "\n";
 
     if (!history->popEvent(operation))
         connection->syncWrite(opType, event->name);
@@ -97,9 +104,9 @@ FileOperation ClientMonitor::makeFileOperation(
     FileOperation operation;
 
     operation.type = opType;
-    copyLength = std::min(nameLength, sizeof(operation.filename));
-    operation.filenameSize = copyLength;
-    strncpy(operation.filename, fileName, copyLength);
+    std::string filename(fileName);
+    filename.copy(operation.filename, MAX_FILENAME);
+    operation.filenameSize = filename.size();
 
     return operation;
 }

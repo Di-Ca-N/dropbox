@@ -2,17 +2,15 @@
 #include "Messages.hpp"
 #include "utils.hpp"
 
-SyncServerToClientHandler::SyncServerToClientHandler(std::string username, int clientSocket, DeviceManager *deviceManager) {
+SyncServerToClientHandler::SyncServerToClientHandler(std::string username, int clientSocket, Device &device) {
     this->clientSocket = clientSocket;
     this->username = username;
-    this->deviceManager = deviceManager;
+    this->device = device;
     this->baseDir = std::filesystem::path(username.c_str());
 }
 
 void SyncServerToClientHandler::run(){
     try {
-        Device device = deviceManager->registerDevice();
-
         sendOk(clientSocket);
 
         while (true) {
@@ -25,12 +23,14 @@ void SyncServerToClientHandler::run(){
                 break;
             }
 
+            std::string filename(op.filename, op.filenameSize);
+
             switch (op.type) {
                 case FileOpType::FILE_MODIFY:
-                    this->handleFileModify(std::string(op.filename, op.filenameSize));
+                    this->handleFileModify(filename);
                     break;
                 case FileOpType::FILE_DELETE:
-                    this->handleFileDelete(std::string(op.filename, op.filenameSize));
+                    this->handleFileDelete(filename);
                     break;
                 case FileOpType::FILE_MOVE:
                     //this->handleFileMove();

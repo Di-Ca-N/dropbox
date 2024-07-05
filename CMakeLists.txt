@@ -20,6 +20,7 @@ add_executable(server
     server/handlers/DownloadHandler.cpp
     server/handlers/ListServerHandler.cpp
     server/handlers/SyncServerToClientHandler.cpp
+    server/handlers/SyncClientToServerHandler.cpp
     server/SyncQueue.cpp
     server/DeviceManager.cpp
     common/Messages.cpp

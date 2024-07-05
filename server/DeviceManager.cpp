@@ -1,13 +1,12 @@
 #include "DeviceManager.hpp"
 #include <mutex>
 
-int DeviceManager::deviceId = 0;
 
 DeviceManager::DeviceManager(std::string username) {
     this->username = username;
 }
 
-Device DeviceManager::registerDevice() {
+Device& DeviceManager::registerDevice() {
     // Locking to ensure that every device has a unique id
     lock.lock();
     Device device = {
@@ -18,7 +17,11 @@ Device DeviceManager::registerDevice() {
     devices[id] = device;
     deviceId++;
     lock.unlock(); // After generating and saving the device, we can unlock the mutex
-    return device;
+    return devices[id];
+}
+
+Device& DeviceManager::getDevice(int deviceId) { 
+    return devices[deviceId]; 
 }
 
 void DeviceManager::disconnectDevice(int deviceId) {

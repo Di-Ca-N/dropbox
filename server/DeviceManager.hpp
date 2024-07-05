@@ -11,13 +11,14 @@ struct Device {
 
 class DeviceManager {
     private:
-        static int deviceId;
+        int deviceId = 1;
         std::string username;
         std::map<int, Device> devices;
         std::mutex lock;       
     public:
         DeviceManager(std::string username);
-        Device registerDevice();
+        Device& registerDevice();
+        Device& getDevice(int deviceId);
         void disconnectDevice(int deviceId);
         void notifyAllDevices(FileOperation op);
         void notifyOtherDevices(FileOperation op, int sourceDeviceId);

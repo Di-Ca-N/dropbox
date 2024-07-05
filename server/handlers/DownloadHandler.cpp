@@ -28,13 +28,8 @@ void DownloadHandler::run() {
             sendError(clientSocket, "File not found");
         }
 
-        file.seekg(file.end);
-        u_int64_t fileSize = file.tellg();
-        file.seekg(file.beg);
-        
-        fid.fileSize = fileSize;
-        fid.totalBlocks = getNumBlocks(fileSize, MAX_PAYLOAD);
-        
+        fid = getFileId(filepath);
+
         sendFileId(clientSocket, fid);
         waitConfirmation(clientSocket);
 

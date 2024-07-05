@@ -1,9 +1,11 @@
 #include <memory>
 #include <unistd.h>
+#include <iostream>
 
 #include "ServerMonitor.hpp"
 #include "ClientState.hpp"
 #include "Connection.hpp"
+#include "Messages.hpp"
 
 ServerMonitor::ServerMonitor(
         std::shared_ptr<ClientState> clientState,
@@ -17,11 +19,12 @@ ServerMonitor::ServerMonitor(
 void ServerMonitor::run() {
     std::optional<FileOperation> operation;
 
-    while (clientState->get() == AppState::STATE_ACTIVE) {
-        operation = connection->syncRead();
-
-        if (operation.has_value())
-            history->pushEvent(operation.value());
+    try {
+        while (clientState->get() == AppState::STATE_ACTIVE) {
+            connection->syncRead(history);
+        }
+    } catch (BrokenPipe) {
+        std::cout << "Error\n";
     }
 }
 

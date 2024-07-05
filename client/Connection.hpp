@@ -7,9 +7,12 @@
 #include <optional>
 
 #include "Messages.hpp"
+#include "EventHistory.hpp"
+
 
 class Connection {
 private:
+    int deviceId = -1;
     int commandSock = -1;
     int readSock = -1;
     int writeSock = -1;
@@ -21,7 +24,7 @@ private:
     void sendDelete(std::filesystem::path target);
 
     void setReadConnection();
-    std::optional<FileOperation> syncProcessRead();
+    void syncProcessRead(std::shared_ptr<EventHistory> history);
     void syncReadChange(FileId &fileId);
     void syncReadDelete(FileId &fileId);
     FileOperation makeFileOperation(FileId &fileId, FileOpType &fileOpType);
@@ -32,7 +35,7 @@ public:
     void download(std::filesystem::path filepath);
     void delete_(std::filesystem::path filepath);
     std::vector<FileMeta> listServer();
-    std::optional<FileOperation> syncRead();
+    void syncRead(std::shared_ptr<EventHistory> history);
     void syncWrite(FileOpType op, std::filesystem::path target);
 };
 
