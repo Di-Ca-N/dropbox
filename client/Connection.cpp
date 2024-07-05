@@ -337,10 +337,17 @@ void Connection::syncWrite(FileOpType op, std::filesystem::path target) {
 void Connection::sendChange(std::filesystem::path target) {
     std::filesystem::path syncDir(SYNC_DIR);
     std::filesystem::path filepath = syncDir / target;
+
     std::ifstream file;
     FileId fileId;
-
-    fileId = getFileId(filepath);
+    try {
+        fileId = getFileId(filepath);
+    } catch (std::filesystem::filesystem_error) {
+        // This happens if the file was deleted before we could send it's changes to the server.
+        // It is a common problem with temporary files created by some programs (such as vim or gedit)
+        return;
+    }
+    
 
     sendFileId(writeSock, fileId);
     waitConfirmation(writeSock);
