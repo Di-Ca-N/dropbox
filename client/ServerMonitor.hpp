@@ -17,6 +17,7 @@ public:
             std::shared_ptr<Connection> connection,
             std::shared_ptr<EventHistory> history);
     void run();
+    void applyTempIfContentUpdate(FileOperation &operation);
 };
 
 #endif

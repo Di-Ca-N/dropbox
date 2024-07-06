@@ -2,11 +2,11 @@
 #include <fcntl.h>
 #include <sys/unistd.h>
 #include <cstring>
-#include <iostream>
 
 #include "ClientMonitor.hpp"
 #include "ClientState.hpp"
 #include "Messages.hpp"
+#include "ClientConfig.hpp"
 #include "Connection.hpp"
 
 #define MAX_EVENT_SIZE (sizeof(struct inotify_event) + 256)
@@ -68,20 +68,43 @@ void ClientMonitor::processEventBuffer(unsigned char buffer[], int bytesRead) {
     while (eventPtr < buffer + bytesRead) {
         event = (inotify_event*) eventPtr;
 
-        if (event->mask & IN_CLOSE_WRITE || event->mask & IN_MOVED_TO) {
-            //std::cout << "MODIFY\n";
-            sendOperationIfNotDuplicated(FileOpType::FILE_MODIFY, event);
-        }
+        if (!fileIsTemporary(event->name, event->len)) {
+            if (event->mask & IN_CLOSE_WRITE || event->mask & IN_MOVED_TO) {
+                //std::cout << "MODIFY\n";
+                sendOperationIfNotDuplicated(FileOpType::FILE_MODIFY, event);
+            }
 
-        if (event->mask & IN_DELETE || event->mask & IN_MOVED_FROM){
-            //std::cout << "DELETE\n";
-            sendOperationIfNotDuplicated(FileOpType::FILE_DELETE, event);
+            if (event->mask & IN_DELETE || event->mask & IN_MOVED_FROM){
+                //std::cout << "DELETE\n";
+                sendOperationIfNotDuplicated(FileOpType::FILE_DELETE, event);
+            }
         }
 
         if (event->mask & IN_DELETE_SELF)
             clientState->setUntrackedIfNotClosing();
 
         eventPtr += sizeof(inotify_event) + event->len;
+    }
+}
+
+bool ClientMonitor::fileIsTemporary(char* name, int len) {
+    std::string fileName = std::string(name, len);
+    auto filePath = std::filesystem::path(fileName);
+
+    auto tempExtension = std::string(TEMP_FILE_EXT);
+    std::string fileExtension = filePath.extension().string();
+
+    removeTrailingZeros(fileExtension);
+
+    return (fileExtension == tempExtension);
+}
+
+void ClientMonitor::removeTrailingZeros(std::string &str) {
+    auto it = str.begin(); 
+    for (; *it != '\0'; it++);
+
+    if (it != str.end()) {
+        str.erase(it, str.end());
     }
 }
 

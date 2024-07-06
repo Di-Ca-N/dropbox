@@ -18,6 +18,8 @@ class ClientMonitor {
     void watchEvents(int inotifyFd, int bitMask, std::string syncDir);
     void setNonBlocking(int inotifyFd);
     void processEventBuffer(unsigned char buffer[], int bytesRead);
+    bool fileIsTemporary(char* name, int len);
+    void removeTrailingZeros(std::string &str);
     void sendOperationIfNotDuplicated(FileOpType opType, inotify_event *event);
     FileOperation makeFileOperation(FileOpType opType, char *fileName, size_t nameLength);
     int startEventTracking();

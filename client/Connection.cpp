@@ -224,9 +224,10 @@ std::vector<FileMeta> Connection::listServer() {
 }
 
 
-void Connection::syncRead(std::shared_ptr<EventHistory> history) {
+std::optional<FileOperation> Connection::syncRead() {
     int pollStatus;
     struct pollfd pfd;
+    std::optional<FileOperation> operation;
 
     pfd.fd = readSock;
     pfd.events = POLLIN;
@@ -236,39 +237,44 @@ void Connection::syncRead(std::shared_ptr<EventHistory> history) {
     if (pollStatus == -1) {
         std::cout << "Error while trying to poll server\n";
     } else if (pollStatus > 0) {
-        syncProcessRead(history);
+        try{
+            operation = syncProcessRead();
+        } catch (ErrorReply e) {
+            std::cout << "Error: " << e.what() << "\n";
+        } catch (BrokenPipe) {
+            std::cout << "Connection closed during authentication\n";
+        } catch (UnexpectedMsgType) {
+            std::cout << "Unexpected response\n";
+        }
     }
+
+    return operation;
 }
 
-void Connection::syncProcessRead(std::shared_ptr<EventHistory> history) {
+FileOperation Connection::syncProcessRead() {
     FileId fileId;
     FileOpType fileOpType;
 
-    try {
-        fileOpType = receiveFileOperation(readSock);
-        sendOk(readSock);
+    fileOpType = receiveFileOperation(readSock);
+    sendOk(readSock);
 
-        fileId = receiveFileId(readSock);
-        sendOk(readSock);
+    fileId = receiveFileId(readSock);
+    sendOk(readSock);
 
-        FileOperation fileOperation = makeFileOperation(fileId, fileOpType);
+    FileOperation fileOperation = makeFileOperation(fileId, fileOpType);
 
-        history->pushEvent(fileOperation);
-        switch (fileOpType) {
-            case FileOpType::FILE_MODIFY:
-                syncReadChange(fileId);
-                break;
-            case FileOpType::FILE_DELETE:
-                syncReadDelete(fileId);
-                break;
-            default:
-                break;
-        }
-    } catch (ErrorReply e) {
-        std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response\n";
+    switch (fileOpType) {
+        case FileOpType::FILE_MODIFY:
+            syncReadChange(fileId);
+            break;
+        case FileOpType::FILE_DELETE:
+            syncReadDelete(fileId);
+            break;
+        default:
+            break;
     }
+
+    return fileOperation;
 }
 
 FileOperation Connection::makeFileOperation(
@@ -286,22 +292,17 @@ FileOperation Connection::makeFileOperation(
 void Connection::syncReadChange(FileId &fileId) {
     std::ofstream stream;
     std::filesystem::path syncDir(SYNC_DIR);
-    
-    try {
-        std::string filename(fileId.filename, fileId.filenameSize);
-        std::filesystem::path filepath = syncDir / filename;
-        stream.open(
-                filepath,
-                std::ofstream::binary
-        );
-        receiveFileData(readSock, fileId.totalBlocks, stream);
-        stream.close();
-        sendOk(readSock);
-    } catch(BrokenPipe) {
-        std::cout << "Connection broken during operation\n";
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response\n";
-    }
+
+    std::string filename(fileId.filename, fileId.filenameSize);
+    std::filesystem::path filepath = syncDir / filename;
+    filepath.concat(TEMP_FILE_EXT); // Do not change file directly. Let monitor do that.
+    stream.open(
+            filepath,
+            std::ofstream::binary
+    );
+    receiveFileData(readSock, fileId.totalBlocks, stream);
+    stream.close();
+    sendOk(readSock);
 }
 
 void Connection::syncReadDelete(FileId &fileId) {
