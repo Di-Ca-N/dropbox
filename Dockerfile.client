@@ -1,0 +1,14 @@
+FROM ubuntu:jammy
+WORKDIR /app
+COPY . .
+
+# Install g++ and cmake
+RUN apt-get update && apt-get install -y g++ cmake
+
+# Build project
+WORKDIR /app/build
+RUN cmake ..
+RUN cmake --build .
+
+CMD ["./bin/client", "test-client", "127.0.0.1", "8000"]
+

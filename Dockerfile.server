@@ -1,0 +1,17 @@
+FROM ubuntu:jammy
+WORKDIR /app
+COPY . .
+
+# Install g++ and cmake
+RUN apt-get update && apt-get install -y g++ cmake
+
+# Build project
+WORKDIR /app/build
+RUN cmake ..
+RUN cmake --build .
+
+# Expose port
+EXPOSE 8000
+
+CMD ["./bin/server", "8000"]
+
