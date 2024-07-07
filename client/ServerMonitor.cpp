@@ -19,15 +19,12 @@ ServerMonitor::ServerMonitor(
 }
 
 void ServerMonitor::run() {
-    std::optional<FileOperation> operation;
-
     while (clientState->get() == AppState::STATE_ACTIVE) {
-        operation = connection->syncRead();
+        std::optional<FileOperation> operation = connection->syncRead();
 
         if (operation.has_value()) {
             history->pushEvent(operation.value());             
             applyTempIfContentUpdate(operation.value());
-            operation.reset();
         }
     }
 }
@@ -45,17 +42,7 @@ void ServerMonitor::applyTempIfContentUpdate(FileOperation &operation) {
         tempPath = targetPath;
         tempPath += TEMP_FILE_EXT;
 
-        tempStream.open(tempPath, std::ios::binary);
-        targetStream.open(targetPath, std::ios::binary);
-
-        if (tempStream.is_open() && targetStream.is_open()) {
-            targetStream << tempStream.rdbuf();
-        }
-
-        tempStream.close();
-        targetStream.close();
-
-        std::remove(tempPath.c_str());
+        std::filesystem::rename(tempPath, targetPath);
     }
 }
 
