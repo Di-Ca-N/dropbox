@@ -21,9 +21,13 @@ std::map<std::string, DeviceManager*> deviceManagers;
 std::mutex userRegisterMutex;
 
 void handleClient(int clientSocket) {
+    DeviceManager *userDeviceManager = nullptr;
+    int deviceId = -1;
+    std::string username;
+
     try {
         AuthData authData = receiveAuth(clientSocket);
-        std::string username(authData.username, authData.usernameLen);
+        username = std::string(authData.username, authData.usernameLen);
         std::filesystem::create_directory(username);
 
         {
@@ -33,18 +37,20 @@ void handleClient(int clientSocket) {
             }
         }
 
-        DeviceManager *userDeviceManager = deviceManagers[username]; // at-most-once
+        userDeviceManager = deviceManagers[username];
 
         if (authData.deviceId == 0) { // Unknown device
             Device device = userDeviceManager->registerDevice();
             authData.deviceId = device.id;
             std::cout << "User " << username << " connected a new device. Assigned id " << device.id << "\n";
         }
-
-        std::cout << "Client " << username << " authenticated with device " << authData.deviceId << "\n";
+        deviceId = authData.deviceId;
+        userDeviceManager->connectDevice(deviceId);
         sendAuth(clientSocket, authData);
 
-        Device device = userDeviceManager->getDevice(authData.deviceId);
+        std::cout << "User " << username << " authenticated with device " << deviceId << "\n";
+
+        Device device = userDeviceManager->getDevice(deviceId);
 
         while (true) {
             Message msg = receiveMessage(clientSocket);
@@ -64,19 +70,22 @@ void handleClient(int clientSocket) {
                     break;
                 case MsgType::MSG_SYNC_SERVER_TO_CLIENT:
                     SyncServerToClientHandler(username, clientSocket, device).run();
-                    goto out;
+                    break;
                 case MsgType::MSG_SYNC_CLIENT_TO_SERVER:
-                    SyncClientToServerHandler(username, clientSocket, device.id, userDeviceManager).run();
-                    goto out;
+                    SyncClientToServerHandler(username, clientSocket, deviceId, userDeviceManager).run();
+                    break;
                 default:
                     sendError(clientSocket, "Unrecognized command");
                     break;
             }
         }
     } catch (BrokenPipe) {
-        std::cout << "Client disconnected\n";
+        std::cout << "User " << username << " disconnected from device " << deviceId << "\n";
     }
-out:
+
+    if (userDeviceManager != nullptr && deviceId != -1) {
+        userDeviceManager->disconnectDevice(deviceId);
+    }
     close(clientSocket);
 }
 

@@ -1,36 +1,48 @@
 #include "DeviceManager.hpp"
-#include <mutex>
-
+#include <iostream>
 
 DeviceManager::DeviceManager(std::string username) {
     this->username = username;
 }
 
 Device& DeviceManager::registerDevice() {
-    // Locking to ensure that every device has a unique id
-    lock.lock();
+    std::lock_guard<std::mutex> lock(mutex);
     Device device = {
         .id=deviceId,
+        .numConnections=0,
         .queue=new SyncQueue(),
     };
     int id = deviceId;
     devices[id] = device;
     deviceId++;
-    lock.unlock(); // After generating and saving the device, we can unlock the mutex
     return devices[id];
 }
 
-Device& DeviceManager::getDevice(int deviceId) { 
-    return devices[deviceId]; 
+Device DeviceManager::getDevice(int deviceId) {
+    std::lock_guard<std::mutex> lock(mutex);
+    return devices[deviceId];
+}
+
+void DeviceManager::connectDevice(int deviceId) {
+    std::lock_guard<std::mutex> lock(mutex);
+    Device& device = devices[deviceId];
+    device.numConnections++;
 }
 
 void DeviceManager::disconnectDevice(int deviceId) {
     // Locking to ensure consistency when deleting a device
-    lock.lock();
-    Device device = devices[deviceId];
-    delete device.queue;
-    devices.erase(deviceId);
-    lock.unlock();
+    std::lock_guard<std::mutex> lock(mutex);
+    Device& device = devices[deviceId];
+
+    if (device.numConnections > 0) {
+        device.numConnections--;
+    }
+
+    if (device.numConnections == 0) {
+        std::cout << "Delete device with id " << device.id << "\n";
+        delete device.queue;
+        devices.erase(deviceId);
+    }
 }
 
 void DeviceManager::notifyAllDevices(FileOperation op) {
