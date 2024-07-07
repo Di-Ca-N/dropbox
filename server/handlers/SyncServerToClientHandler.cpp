@@ -10,44 +10,39 @@ SyncServerToClientHandler::SyncServerToClientHandler(std::string username, int c
 }
 
 void SyncServerToClientHandler::run(){
-    try {
-        sendOk(clientSocket);
+    sendOk(clientSocket);
 
-        while (true) {
-            FileOperation op = device.queue->get();
+    while (true) {
+        FileOperation op = device.queue->get();
 
-            try {
-                sendFileOperation(clientSocket, op.type);
-                waitConfirmation(clientSocket);
-            } catch (ErrorReply reply) {
+        std::string filename(op.filename, op.filenameSize);
+
+        switch (op.type) {
+            case FileOpType::FILE_MODIFY:
+                this->handleFileModify(filename);
                 break;
-            }
-
-            std::string filename(op.filename, op.filenameSize);
-
-            switch (op.type) {
-                case FileOpType::FILE_MODIFY:
-                    this->handleFileModify(filename);
-                    break;
-                case FileOpType::FILE_DELETE:
-                    this->handleFileDelete(filename);
-                    break;
-                default:
-                    break;
-            }
+            case FileOpType::FILE_DELETE:
+                this->handleFileDelete(filename);
+                break;
+            default:
+                break;
         }
-    } catch (UnexpectedMsgType e) {
-        std::cout << e.what() << "\n";
     }
 }
 
 void SyncServerToClientHandler::handleFileModify(std::string filename) {
     std::filesystem::path filepath = baseDir / filename;
 
-    FileId fid = getFileId(filepath);
+    FileId fid;
+    if (buildFileIdFromPath(filepath, &fid)) {
+        return;
+    }
     std::ifstream file(filepath, std::ios::binary);
 
     try {
+        sendFileOperation(clientSocket, FileOpType::FILE_MODIFY);
+        waitConfirmation(clientSocket);
+
         sendFileId(clientSocket, fid);
         waitConfirmation(clientSocket);
 
@@ -55,11 +50,16 @@ void SyncServerToClientHandler::handleFileModify(std::string filename) {
         waitConfirmation(clientSocket);
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType e) {
+        std::cout << e.what() << "\n";
     }
 }
 
 void SyncServerToClientHandler::handleFileDelete(std::string filename) {
     try {
+        sendFileOperation(clientSocket, FileOpType::FILE_DELETE);
+        waitConfirmation(clientSocket);
+        
         FileId fileId;
         filename.copy(fileId.filename, MAX_FILENAME);
         fileId.filenameSize = filename.size();
@@ -68,5 +68,7 @@ void SyncServerToClientHandler::handleFileDelete(std::string filename) {
         waitConfirmation(clientSocket);
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType e) {
+        std::cout << e.what() << "\n";
     }
 }

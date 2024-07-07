@@ -28,9 +28,7 @@ enum class MsgType : u_int8_t {
     MSG_NUM_FILES,
     MSG_FILE_METADATA,
     MSG_OK,
-    MSG_ERROR,
-    MSG_DEVICE_ID,
-    MSG_REGISTER_DEVICE,
+    MSG_ERROR
 };
 
 // Helper function to get a string representation of MsgType

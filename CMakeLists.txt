@@ -43,6 +43,7 @@ target_include_directories(server PUBLIC common)
 target_include_directories(client PUBLIC common)
 
 target_link_libraries(client ${CMAKE_THREAD_LIBSS_INIT})
+target_link_libraries(server ${CMAKE_THREAD_LIBSS_INIT})
 
 if(BUILD_TESTS)
     include(FetchContent)

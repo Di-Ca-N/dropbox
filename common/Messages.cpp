@@ -21,8 +21,6 @@ std::map<MsgType, std::string> msgTypeNames = {
     {MsgType::MSG_FILE_OPERATION, "MSG_FILE_OPERATION"},
     {MsgType::MSG_NUM_FILES, "MSG_NUM_FILES"},
     {MsgType::MSG_FILE_METADATA, "MSG_FILE_METADATA"},
-    {MsgType::MSG_DEVICE_ID, "MSG_DEVICE_ID"},
-    {MsgType::MSG_REGISTER_DEVICE, "MSG_REGISTER_DEVICE"},
 };
 
 std::string toString(MsgType type) { return msgTypeNames[type]; }
