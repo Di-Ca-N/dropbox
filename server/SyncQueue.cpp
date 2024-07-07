@@ -1,16 +1,16 @@
 #include "SyncQueue.hpp"
 
-SyncQueue::SyncQueue() {
-    sem_init(&sem, 0, 0);
-}
+SyncQueue::SyncQueue() {}
 
 void SyncQueue::push(FileOperation fp) {
+    std::lock_guard<std::mutex> lock(mutex);
     opQueue.push(fp);
-    sem_post(&sem); 
+    hasOperation.notify_one();
 }
 
 FileOperation SyncQueue::get() {
-    sem_wait(&sem);
+    std::unique_lock<std::mutex> lock(mutex);
+    while (opQueue.empty()) hasOperation.wait(lock);
     FileOperation op = opQueue.front();
     opQueue.pop();
     return op;

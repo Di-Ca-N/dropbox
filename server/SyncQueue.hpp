@@ -3,6 +3,7 @@
 #include <string>
 #include <mutex>
 #include <queue>
+#include <condition_variable>
 #include <semaphore.h>
 #include "Messages.hpp"
 
@@ -10,6 +11,8 @@
 class SyncQueue {
     private:
         std::queue<FileOperation> opQueue;
+        std::mutex mutex;
+        std::condition_variable hasOperation;
         sem_t sem;
 
     public:

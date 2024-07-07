@@ -15,8 +15,10 @@
 #include "handlers/SyncServerToClientHandler.hpp"
 #include "handlers/SyncClientToServerHandler.hpp"
 #include "DeviceManager.hpp"
+#include <atomic>
 
 std::map<std::string, DeviceManager*> deviceManagers;
+std::mutex userRegisterMutex;
 
 void handleClient(int clientSocket) {
     try {
@@ -24,11 +26,14 @@ void handleClient(int clientSocket) {
         std::string username(authData.username, authData.usernameLen);
         std::filesystem::create_directory(username);
 
-        if (deviceManagers.find(username) == deviceManagers.end()) {
-            deviceManagers[username] = new DeviceManager(username);
+        {
+            std::lock_guard<std::mutex> lock(userRegisterMutex);
+            if (deviceManagers.find(username) == deviceManagers.end()) {
+                deviceManagers[username] = new DeviceManager(username);
+            }
         }
 
-        DeviceManager *userDeviceManager = deviceManagers[username];
+        DeviceManager *userDeviceManager = deviceManagers[username]; // at-most-once
 
         if (authData.deviceId == 0) { // Unknown device
             Device device = userDeviceManager->registerDevice();
