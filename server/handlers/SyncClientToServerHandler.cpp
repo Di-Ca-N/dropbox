@@ -59,6 +59,8 @@ void SyncClientToServerHandler::handleFileChange() {
     receiveFileData(clientSocket, fileId.totalBlocks, file);
     sendOk(clientSocket);
 
+    file.flush(); // Ensure the file is completely saved in disk before notifying other devices
+
     FileOperation op;
     filename.copy(op.filename, MAX_FILENAME);
     op.filenameSize = filename.size();

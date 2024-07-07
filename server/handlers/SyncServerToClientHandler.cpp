@@ -32,24 +32,19 @@ void SyncServerToClientHandler::run(){
                 case FileOpType::FILE_DELETE:
                     this->handleFileDelete(filename);
                     break;
-                case FileOpType::FILE_MOVE:
-                    //this->handleFileMove();
+                default:
                     break;
             }
         }
-    } catch (UnexpectedMsgType) {
-
+    } catch (UnexpectedMsgType e) {
+        std::cout << e.what() << "\n";
     }
 }
 
 void SyncServerToClientHandler::handleFileModify(std::string filename) {
     std::filesystem::path filepath = baseDir / filename;
 
-    FileId fid;
-    if (buildFileIdFromPath(filepath, &fid)) {
-        std::cout << "Couldn't read file\n";
-        return;
-    }
+    FileId fid = getFileId(filepath);
     std::ifstream file(filepath, std::ios::binary);
 
     try {

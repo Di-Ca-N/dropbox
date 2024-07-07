@@ -314,9 +314,6 @@ void Connection::syncReadDelete(FileId &fileId) {
 
 void Connection::syncWrite(FileOpType op, std::filesystem::path target) {
     try {
-        sendFileOperation(writeSock, op);
-        waitConfirmation(writeSock);
-
         switch (op) {
             case FileOpType::FILE_MODIFY:
                 sendChange(target);
@@ -328,7 +325,7 @@ void Connection::syncWrite(FileOpType op, std::filesystem::path target) {
                 break;
         }
     } catch(BrokenPipe) {
-        std::cout << "Connection broken during operation blue\n";
+        std::cout << "Connection broken during operation\n";
     } catch (UnexpectedMsgType) {
         std::cout << "Unexpected response\n";
     } catch (ErrorReply e) {
@@ -348,7 +345,9 @@ void Connection::sendChange(std::filesystem::path target) {
         // It is a common problem with temporary files created by some programs (such as vim or gedit)
         return;
     }
-    
+
+    sendFileOperation(writeSock, FileOpType::FILE_MODIFY);
+    waitConfirmation(writeSock);
 
     sendFileId(writeSock, fileId);
     waitConfirmation(writeSock);
@@ -363,6 +362,9 @@ void Connection::sendDelete(std::filesystem::path target) {
     std::string filename = target.filename().string();
     filename.copy(fileId.filename, MAX_FILENAME);
     fileId.filenameSize = filename.size();
+
+    sendFileOperation(writeSock, FileOpType::FILE_DELETE);
+    waitConfirmation(writeSock);
 
     sendFileId(writeSock, fileId);
     waitConfirmation(writeSock);
