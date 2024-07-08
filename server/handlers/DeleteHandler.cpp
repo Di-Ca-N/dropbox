@@ -1,6 +1,7 @@
 #include "DeleteHandler.hpp"
 
 #include <filesystem>
+#include <iostream>
 
 #include "Messages.hpp"
 
@@ -15,8 +16,7 @@ void DeleteHandler::run() {
     try {
         sendOk(clientSocket);
         FileId fid = receiveFileId(clientSocket);
-
-        std::string filename(fid.filename, fid.filename + fid.fileSize);
+        std::string filename(fid.filename, fid.filename + fid.filenameSize);
         std::filesystem::path filepath = baseDir / filename;
 
         if (std::filesystem::remove(filepath)) {
