@@ -20,7 +20,7 @@ void UploadHandler::run(){
         
         std::string filename(fileId.filename, fileId.filenameSize);
 
-        std::ofstream file(baseDir / filename);
+        std::ofstream file(baseDir / filename, std::fstream::binary);
 
         if (file) {
             sendOk(clientSocket);

@@ -352,7 +352,7 @@ void Connection::sendChange(std::filesystem::path target) {
     sendFileId(writeSock, fileId);
     waitConfirmation(writeSock);
 
-    file = std::ifstream(filepath);
+    file = std::ifstream(filepath, std::ios::binary);
     sendFileData(writeSock, fileId.totalBlocks, file);
     waitConfirmation(writeSock);
 }
