@@ -26,6 +26,7 @@ void DownloadHandler::run() {
             sendOk(clientSocket);
         } else {
             sendError(clientSocket, "File not found");
+            return;
         }
 
         fid = getFileId(filepath);
