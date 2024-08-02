@@ -251,12 +251,17 @@ std::optional<FileOperation> Connection::syncRead() {
     return operation;
 }
 
-FileOperation Connection::syncProcessRead() {
+std::optional<FileOperation> Connection::syncProcessRead() {
     FileId fileId;
     FileOpType fileOpType;
 
     fileOpType = receiveFileOperation(readSock);
     sendOk(readSock);
+
+    if (fileOpType == FileOpType::VOID_OP) {
+        sendOk(readSock);
+        return std::nullopt;
+    }
 
     fileId = receiveFileId(readSock);
     sendOk(readSock);

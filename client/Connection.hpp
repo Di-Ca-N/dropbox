@@ -22,7 +22,7 @@ private:
     void sendDelete(std::filesystem::path target);
 
     void setReadConnection();
-    FileOperation syncProcessRead();
+    std::optional<FileOperation> syncProcessRead();
     void syncReadChange(FileId &fileId);
     void syncReadDelete(FileId &fileId);
     FileOperation makeFileOperation(FileId &fileId, FileOpType &fileOpType);

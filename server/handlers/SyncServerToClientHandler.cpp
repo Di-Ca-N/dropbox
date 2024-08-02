@@ -1,4 +1,7 @@
 #include "SyncServerToClientHandler.hpp"
+
+#include <optional>
+
 #include "Messages.hpp"
 #include "utils.hpp"
 
@@ -13,8 +16,9 @@ void SyncServerToClientHandler::run(){
     sendOk(clientSocket);
 
     while (true) {
-        FileOperation op = device.queue->get();
-
+        std::optional<FileOperation> optionalOp = device.queue->get(1000);
+        
+        FileOperation op = optionalOp.value_or((FileOperation){.type=FileOpType::VOID_OP, .filenameSize=0, .filename=""});
         std::string filename(op.filename, op.filenameSize);
 
         switch (op.type) {
@@ -23,6 +27,9 @@ void SyncServerToClientHandler::run(){
                 break;
             case FileOpType::FILE_DELETE:
                 this->handleFileDelete(filename);
+                break;
+            case FileOpType::VOID_OP:
+                this->handleVoidOp();
                 break;
             default:
                 break;
@@ -65,6 +72,17 @@ void SyncServerToClientHandler::handleFileDelete(std::string filename) {
         fileId.filenameSize = filename.size();
 
         sendFileId(clientSocket, fileId);
+        waitConfirmation(clientSocket);
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType e) {
+        std::cout << e.what() << "\n";
+    }
+}
+
+void SyncServerToClientHandler::handleVoidOp() {
+    try {
+        sendFileOperation(clientSocket, FileOpType::VOID_OP);
         waitConfirmation(clientSocket);
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";

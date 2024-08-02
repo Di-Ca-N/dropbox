@@ -10,8 +10,24 @@ void SyncQueue::push(FileOperation fp) {
 
 FileOperation SyncQueue::get() {
     std::unique_lock<std::mutex> lock(mutex);
-    while (opQueue.empty()) hasOperation.wait(lock);
+    while (opQueue.empty()) {
+        hasOperation.wait(lock);
+    }
     FileOperation op = opQueue.front();
     opQueue.pop();
     return op;
+}
+
+std::optional<FileOperation> SyncQueue::get(int timeoutMs) {
+    std::unique_lock<std::mutex> lock(mutex);
+
+    bool operationAvailable = hasOperation.wait_for(lock, std::chrono::milliseconds(timeoutMs), [&]{return !opQueue.empty();});
+
+    if (operationAvailable) {
+        FileOperation op = opQueue.front();
+        opQueue.pop();
+        return op;
+    } else {
+        return std::nullopt;
+    }
 }

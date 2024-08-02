@@ -50,7 +50,7 @@ typedef struct {
     char filename[MAX_FILENAME];
 } FileId;
 
-enum class FileOpType : u_int8_t { FILE_MODIFY, FILE_DELETE, FILE_MOVE };
+enum class FileOpType : u_int8_t { FILE_MODIFY, FILE_DELETE, FILE_MOVE, VOID_OP };
 
 // Struct to identify a file operation
 typedef struct {
