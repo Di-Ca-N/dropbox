@@ -5,7 +5,6 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
-#include <map>
 #include <string>
 
 #define MAX_PAYLOAD 512
@@ -27,6 +26,9 @@ enum class MsgType : u_int8_t {
     MSG_FILE_OPERATION,
     MSG_NUM_FILES,
     MSG_FILE_METADATA,
+    MSG_STATUS_INQUIRY,
+    MSG_SERVICE_STATUS,
+    MSG_SERVER_ADDRESS,
     MSG_OK,
     MSG_ERROR
 };
@@ -67,6 +69,12 @@ typedef struct {
     time_t cTime;
 } FileMeta;
 
+// Struct to identify the service status
+typedef bool ServiceStatus;
+
+// Struct to identify a server address
+typedef struct sockaddr ServerAddress;
+
 // Struct with the required data to perform authentication.
 // If the devices still does not have an Id, it must be set to 0.
 typedef struct {
@@ -92,6 +100,10 @@ void sendFileMeta(int sock_fd, FileMeta meta);
 FileMeta receiveFileMeta(int sock_fd);
 void sendFileOperation(int sock_fd, FileOpType type);
 FileOpType receiveFileOperation(int sock_fd);
+void sendServiceStatus(int sock_fd, ServiceStatus status);
+ServiceStatus receiveServiceStatus(int sock_fd);
+void sendServerAddress(int sock_fd, ServerAddress address);
+ServerAddress receiveServerAddress(int sock_fd);
 
 /* =========== LOW-LEVEL API ============= */
 Message receiveMessage(int sock_fd);

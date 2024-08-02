@@ -5,7 +5,7 @@
 
 #include <cstring>
 #include <iostream>
-#include <stdexcept>
+#include <map>
 
 std::map<MsgType, std::string> msgTypeNames = {
     {MsgType::MSG_AUTH, "MSG_AUTH"},
@@ -21,6 +21,9 @@ std::map<MsgType, std::string> msgTypeNames = {
     {MsgType::MSG_FILE_OPERATION, "MSG_FILE_OPERATION"},
     {MsgType::MSG_NUM_FILES, "MSG_NUM_FILES"},
     {MsgType::MSG_FILE_METADATA, "MSG_FILE_METADATA"},
+    {MsgType::MSG_STATUS_INQUIRY, "MSG_STATUS_INQUIRY"},
+    {MsgType::MSG_SERVICE_STATUS, "MSG_SERVICE_STATUS"},
+    {MsgType::MSG_SERVER_ADDRESS, "MSG_SERVER_ADDRESS"},
 };
 
 std::string toString(MsgType type) { return msgTypeNames[type]; }
@@ -195,3 +198,20 @@ void sendFileOperation(int sock_fd, FileOpType opType) {
 FileOpType receiveFileOperation(int sock_fd) {
     return receivePayload<FileOpType>(sock_fd, MsgType::MSG_FILE_OPERATION);
 }
+
+void sendServiceStatus(int sock_fd, ServiceStatus status) {
+    sendMessage(sock_fd, MsgType::MSG_SERVICE_STATUS, &status, sizeof(status));
+}
+
+ServiceStatus receiveServiceStatus(int sock_fd) {
+    return receivePayload<ServiceStatus>(sock_fd, MsgType::MSG_SERVICE_STATUS);
+}
+
+void sendServerAddress(int sock_fd, ServerAddress address) {
+    sendMessage(sock_fd, MsgType::MSG_SERVER_ADDRESS, &address, sizeof(address));
+}
+
+ServerAddress receiveServerAddress(int sock_fd) {
+    return receivePayload<ServerAddress>(sock_fd, MsgType::MSG_SERVER_ADDRESS);
+}
+
