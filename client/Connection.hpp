@@ -16,7 +16,7 @@ private:
     int writeSock = -1;
 
     void createSocket(int &socketDescr, std::string ip, int port);
-    void authenticate(int &socketDescr, std::string username);
+    bool authenticate(int &socketDescr, std::string username);
     void setWriteConnection(int &socketDescr);
     void sendChange(std::filesystem::path target);
     void sendDelete(std::filesystem::path target);
@@ -28,7 +28,7 @@ private:
     FileOperation makeFileOperation(FileId &fileId, FileOpType &fileOpType);
 
 public:
-    void connectToServer(std::string username, std::string ip, int port);
+    bool connectToServer(std::string username, std::string ip, int port);
     void upload(std::filesystem::path filepath);
     void download(std::filesystem::path filepath);
     void delete_(std::filesystem::path filepath);

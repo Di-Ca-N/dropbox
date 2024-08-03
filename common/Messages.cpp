@@ -91,6 +91,8 @@ void printMsg(Message *msg) {
 template <typename T>
 T receivePayload(int sock_fd, MsgType expectedType) {
     Message reply = receiveMessage(sock_fd);
+    if (reply.type == MsgType::MSG_ERROR)
+        throw ErrorReply(std::string(reply.payload, reply.len));
     if (reply.type != expectedType)
         throw UnexpectedMsgType(expectedType, reply.type);
     T value;

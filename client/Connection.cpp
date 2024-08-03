@@ -13,17 +13,19 @@
 #include "ClientConfig.hpp"
 
 
-void Connection::connectToServer(std::string username, std::string ip, int port) {
+bool Connection::connectToServer(std::string username, std::string ip, int port) {
     createSocket(commandSock, ip, port);
-    authenticate(commandSock, username);
+    if (!authenticate(commandSock, username)) return false;
 
     createSocket(writeSock, ip, port);
-    authenticate(writeSock, username);
+    if (!authenticate(writeSock, username)) return false;
     setWriteConnection(writeSock);
 
     createSocket(readSock, ip, port);
-    authenticate(readSock, username);
+    if(!authenticate(readSock, username)) return false;
     setReadConnection();
+    
+    return true;
 }
 
 void Connection::createSocket(int &socketDescr, std::string ip, int port) {
@@ -42,7 +44,7 @@ void Connection::createSocket(int &socketDescr, std::string ip, int port) {
     socketDescr = serverConnection;
 }
 
-void Connection::authenticate(int &socketDescr, std::string username) {
+bool Connection::authenticate(int &socketDescr, std::string username) {
     AuthData authData;
     username.copy(authData.username, MAX_USERNAME);
     authData.usernameLen = username.length();
@@ -59,15 +61,15 @@ void Connection::authenticate(int &socketDescr, std::string username) {
         if (this->deviceId == -1) {
             this->deviceId = authResponse.deviceId;
         }
-    } catch (BrokenPipe) {
-        std::cout << "Connection closed during authentication\n";
-        return;
+        return true;
     } catch (UnexpectedMsgType) {
         std::cout << "Unexpected response.\n";
-        return;
+        return false;
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
-        return;
+        return false;
+    } catch (BrokenPipe) {
+        return false;
     }
 }
 
@@ -75,9 +77,6 @@ void Connection::setWriteConnection(int &socketDescr) {
     try {
         sendMessage(socketDescr, MsgType::MSG_SYNC_CLIENT_TO_SERVER, nullptr, 0);
         waitConfirmation(socketDescr);
-    } catch (BrokenPipe) {
-        std::cout << "Connection closed during authentication\n";
-        return;
     } catch (UnexpectedMsgType) {
         std::cout << "Unexpected response.\n";
         return;
@@ -91,8 +90,6 @@ void Connection::setReadConnection() {
     try {
         sendMessage(readSock, MsgType::MSG_SYNC_SERVER_TO_CLIENT, nullptr, 0);
         waitConfirmation(readSock);
-    } catch (BrokenPipe) {
-        std::cout << "Connection closed during authentication\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {
@@ -237,12 +234,10 @@ std::optional<FileOperation> Connection::syncRead() {
     if (pollStatus == -1) {
         std::cout << "Error while trying to poll server\n";
     } else if (pollStatus > 0) {
-        try{
+        try {
             operation = syncProcessRead();
         } catch (ErrorReply e) {
             std::cout << "Error: " << e.what() << "\n";
-        } catch (BrokenPipe) {
-            std::cout << "Connection closed during authentication\n";
         } catch (UnexpectedMsgType) {
             std::cout << "Unexpected response\n";
         }
@@ -329,8 +324,6 @@ void Connection::syncWrite(FileOpType op, std::filesystem::path target) {
             default:
                 break;
         }
-    } catch(BrokenPipe) {
-        std::cout << "Connection broken during operation\n";
     } catch (UnexpectedMsgType) {
         std::cout << "Unexpected response\n";
     } catch (ErrorReply e) {

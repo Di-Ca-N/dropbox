@@ -13,7 +13,9 @@ void CLI::run(std::string username, std::string ip, int port) {
     bool newLine;
     struct pollfd cinFd;
 
-    makeConnection(username, ip, port);
+    if (!makeConnection(username, ip, port)) {
+        return;
+    }
     makeHistory();
     startClientState(AppState::STATE_UNTRACKED);
     initializeCommandParser();
@@ -38,9 +40,9 @@ void CLI::run(std::string username, std::string ip, int port) {
     clientThread.join();
 }
 
-void CLI::makeConnection(std::string username, std::string ip, int port) {
+bool CLI::makeConnection(std::string username, std::string ip, int port) {
     connection = std::make_shared<Connection>(Connection());
-    connection->connectToServer(username, ip, port);
+    return connection->connectToServer(username, ip, port);
 }
 
 void CLI::makeHistory() {

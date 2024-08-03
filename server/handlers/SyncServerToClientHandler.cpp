@@ -5,6 +5,8 @@
 #include "Messages.hpp"
 #include "utils.hpp"
 
+#define FILE_OP_TIMEOUT_MS 500
+
 SyncServerToClientHandler::SyncServerToClientHandler(std::string username, int clientSocket, Device &device) {
     this->clientSocket = clientSocket;
     this->username = username;
@@ -16,7 +18,7 @@ void SyncServerToClientHandler::run(){
     sendOk(clientSocket);
 
     while (true) {
-        std::optional<FileOperation> optionalOp = device.queue->get(1000);
+        std::optional<FileOperation> optionalOp = device.queue->get(FILE_OP_TIMEOUT_MS);
         
         FileOperation op = optionalOp.value_or((FileOperation){.type=FileOpType::VOID_OP, .filenameSize=0, .filename=""});
         std::string filename(op.filename, op.filenameSize);
