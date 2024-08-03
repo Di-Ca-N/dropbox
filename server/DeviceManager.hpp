@@ -2,6 +2,7 @@
 
 #include <string>
 #include <map>
+#include <stdexcept>
 #include "SyncQueue.hpp"
 
 struct Device {
@@ -10,15 +11,32 @@ struct Device {
     SyncQueue* queue;
 };
 
+
+class TooManyDevices : public std::exception {
+   private:
+    int maxDevices;
+    std::string msg;
+   public:
+    TooManyDevices(int maxDevices) {
+        this->maxDevices = maxDevices;
+        msg = "User can only connect up to " + std::to_string(maxDevices) + " devices at the same time";
+    };
+
+    const char* what() const throw() { return msg.c_str(); }
+};
+
+
 // Manage devices of a single user
 class DeviceManager {
     private:
         int deviceId = 1; // Next deviceId to be assigned. Must start at 1.
+        int maxDevices; // Maximum number of devices that can be connected at the same time. Set to -1 to disable the limit
         std::string username;
         std::map<int, Device> devices;
         std::mutex mutex;   
     public:
-        DeviceManager(std::string username);
+        // DeviceManager for the given user. Set maxDevices to -1 to remove the limit
+        DeviceManager(std::string username, int maxDevices=-1);
         // Register a new device for the user and returns a reference to it. The returned device is 
         // guaranteed to have a unique ID for that user.
         Device& registerDevice();

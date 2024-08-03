@@ -21,7 +21,7 @@ class CLI : public ThreadOwner, public std::enable_shared_from_this<CLI> {
     std::thread serverThread;
     std::thread clientThread;
 
-    void makeConnection(std::string username, std::string ip, int port);
+    bool makeConnection(std::string username, std::string ip, int port);
     void makeHistory();
     void startClientState(AppState state);
     void printPrompt();

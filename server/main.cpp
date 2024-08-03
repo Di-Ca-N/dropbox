@@ -15,7 +15,8 @@
 #include "handlers/SyncServerToClientHandler.hpp"
 #include "handlers/SyncClientToServerHandler.hpp"
 #include "DeviceManager.hpp"
-#include <atomic>
+
+#define MAX_USER_DEVICES 2
 
 std::map<std::string, DeviceManager*> deviceManagers;
 std::mutex userRegisterMutex;
@@ -33,12 +34,12 @@ void handleClient(int clientSocket) {
         {
             std::lock_guard<std::mutex> lock(userRegisterMutex);
             if (deviceManagers.find(username) == deviceManagers.end()) {
-                deviceManagers[username] = new DeviceManager(username);
+                deviceManagers[username] = new DeviceManager(username, MAX_USER_DEVICES);
             }
         }
 
         userDeviceManager = deviceManagers[username];
-
+    
         if (authData.deviceId == 0) { // Unknown device
             Device device = userDeviceManager->registerDevice();
             authData.deviceId = device.id;
@@ -81,7 +82,9 @@ void handleClient(int clientSocket) {
         }
     } catch (BrokenPipe) {
         std::cout << "User " << username << " disconnected from device " << deviceId << "\n";
-    }
+    } catch (TooManyDevices t) {
+        sendError(clientSocket, t.what());
+    } 
 
     if (userDeviceManager != nullptr && deviceId != -1) {
         userDeviceManager->disconnectDevice(deviceId);

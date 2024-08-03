@@ -19,13 +19,17 @@ ServerMonitor::ServerMonitor(
 }
 
 void ServerMonitor::run() {
-    while (clientState->get() == AppState::STATE_ACTIVE) {
-        std::optional<FileOperation> operation = connection->syncRead();
+    try {
+        while (clientState->get() == AppState::STATE_ACTIVE) {
+            std::optional<FileOperation> operation = connection->syncRead();
 
-        if (operation.has_value()) {
-            history->pushEvent(operation.value());             
-            applyTempIfContentUpdate(operation.value());
+            if (operation.has_value()) {
+                history->pushEvent(operation.value());             
+                applyTempIfContentUpdate(operation.value());
+            }
         }
+    } catch (BrokenPipe) {
+        return;
     }
 }
 

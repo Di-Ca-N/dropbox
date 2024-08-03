@@ -1,13 +1,19 @@
 #include "DeviceManager.hpp"
 #include <iostream>
 
-DeviceManager::DeviceManager(std::string username) {
+DeviceManager::DeviceManager(std::string username, int maxDevices) {
     this->username = username;
+    this->maxDevices = maxDevices;
 }
 
 Device& DeviceManager::registerDevice() {
     // Locking to ensure consistency when registering a device
     std::lock_guard<std::mutex> lock(mutex);
+
+    if (maxDevices >= 0 and devices.size() >= maxDevices) {
+        throw TooManyDevices(maxDevices);
+    }
+
     Device device = {
         .id=deviceId,
         .numConnections=0,
