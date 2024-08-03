@@ -38,11 +38,16 @@ void ClientMonitor::run(std::string sync_dir) {
        clientState->setUntrackedIfNotClosing(); 
     }
 
-    while (clientState->get() == AppState::STATE_ACTIVE) {
-        bytesRead = read(inotifyFd, buffer, EVENT_BUF_LEN); 
-        if (bytesRead > 0) {
-            processEventBuffer(buffer, bytesRead);
+    try {
+        while (clientState->get() == AppState::STATE_ACTIVE) {
+            bytesRead = read(inotifyFd, buffer, EVENT_BUF_LEN); 
+            if (bytesRead > 0) {
+                processEventBuffer(buffer, bytesRead);
+            }
         }
+    } catch (BrokenPipe) {
+        close(inotifyFd);
+        return;
     }
 
     close(inotifyFd);
