@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <netinet/in.h>
 
 #define MAX_PAYLOAD 512
 #define MAX_FILENAME 256
@@ -69,11 +70,18 @@ typedef struct {
     time_t cTime;
 } FileMeta;
 
+enum class ServiceStatusType : u_int8_t { OFFLINE, ONLINE };
+
 // Struct to identify the service status
-typedef bool ServiceStatus;
+typedef struct {
+    ServiceStatusType status;
+} ServiceStatus;
 
 // Struct to identify a server address
-typedef struct sockaddr ServerAddress;
+typedef struct {
+    in_addr_t ip;
+    in_port_t port;
+} ServerAddress;
 
 // Struct with the required data to perform authentication.
 // If the devices still does not have an Id, it must be set to 0.
