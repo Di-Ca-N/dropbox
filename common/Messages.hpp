@@ -112,6 +112,8 @@ void sendServiceStatus(int sock_fd, ServiceStatus status);
 ServiceStatus receiveServiceStatus(int sock_fd);
 void sendServerAddress(int sock_fd, ServerAddress address);
 ServerAddress receiveServerAddress(int sock_fd);
+void sendHeartbeat(int sock_fd);
+void waitHeartbeat(int sock_fd, int maxTimeout);
 
 /* =========== LOW-LEVEL API ============= */
 Message receiveMessage(int sock_fd);
