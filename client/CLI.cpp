@@ -100,7 +100,9 @@ void CLI::parseCommand(bool &newLine) {
     try {
         std::unique_ptr<Command> command = commandParser->parse(line);
         command->execute();
-    } catch(const std::exception& e) {
+    } catch (BrokenPipe) {
+        std::cout << "Service is offline. Please, try again later.\n";
+    } catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;
     }
 }
