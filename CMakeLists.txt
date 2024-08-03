@@ -21,9 +21,11 @@ add_executable(server
     server/handlers/ListServerHandler.cpp
     server/handlers/SyncServerToClientHandler.cpp
     server/handlers/SyncClientToServerHandler.cpp
+    server/handlers/HeartBeatHandler.cpp
     server/SyncQueue.cpp
     server/DeviceManager.cpp
     common/Messages.cpp
+    common/utils.cpp
 )
 add_executable(client
     client/main.cpp
@@ -37,6 +39,7 @@ add_executable(client
     client/Command.cpp
     client/EventHistory.cpp
     common/Messages.cpp
+    common/utils.cpp
 )
 
 target_include_directories(server PUBLIC common)

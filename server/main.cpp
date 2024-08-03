@@ -14,6 +14,7 @@
 #include "handlers/ListServerHandler.hpp"
 #include "handlers/SyncServerToClientHandler.hpp"
 #include "handlers/SyncClientToServerHandler.hpp"
+#include "handlers/HeartBeatHandler.hpp"
 #include "DeviceManager.hpp"
 
 #define MAX_USER_DEVICES 2
@@ -21,13 +22,13 @@
 std::map<std::string, DeviceManager*> deviceManagers;
 std::mutex userRegisterMutex;
 
-void handleClient(int clientSocket) {
+void handleConnection(int remoteSocket) {
     DeviceManager *userDeviceManager = nullptr;
     int deviceId = -1;
     std::string username;
 
     try {
-        AuthData authData = receiveAuth(clientSocket);
+        AuthData authData = receiveAuth(remoteSocket);
         username = std::string(authData.username, authData.usernameLen);
         std::filesystem::create_directory(username);
 
@@ -47,49 +48,52 @@ void handleClient(int clientSocket) {
         }
         deviceId = authData.deviceId;
         userDeviceManager->connectDevice(deviceId);
-        sendAuth(clientSocket, authData);
+        sendAuth(remoteSocket, authData);
 
         std::cout << "User " << username << " authenticated with device " << deviceId << "\n";
 
         Device device = userDeviceManager->getDevice(deviceId);
 
         while (true) {
-            Message msg = receiveMessage(clientSocket);
+            Message msg = receiveMessage(remoteSocket);
 
             switch(msg.type) {
                 case MsgType::MSG_UPLOAD:
-                    UploadHandler(username, clientSocket, userDeviceManager).run();
+                    UploadHandler(username, remoteSocket, userDeviceManager).run();
                     break;
                 case MsgType::MSG_DOWNLOAD:
-                    DownloadHandler(username, clientSocket).run();
+                    DownloadHandler(username, remoteSocket).run();
                     break;
                 case MsgType::MSG_DELETE:
-                    DeleteHandler(username, clientSocket, userDeviceManager).run();
+                    DeleteHandler(username, remoteSocket, userDeviceManager).run();
                     break;
                 case MsgType::MSG_LIST_SERVER:
-                    ListServerHandler(username, clientSocket).run();
+                    ListServerHandler(username, remoteSocket).run();
                     break;
                 case MsgType::MSG_SYNC_SERVER_TO_CLIENT:
-                    SyncServerToClientHandler(username, clientSocket, device).run();
+                    SyncServerToClientHandler(username, remoteSocket, device).run();
                     break;
                 case MsgType::MSG_SYNC_CLIENT_TO_SERVER:
-                    SyncClientToServerHandler(username, clientSocket, deviceId, userDeviceManager).run();
+                    SyncClientToServerHandler(username, remoteSocket, deviceId, userDeviceManager).run();
+                    break;
+                case MsgType::MSG_HEARTBEAT:
+                    HeartBeatHandler(remoteSocket).run();
                     break;
                 default:
-                    sendError(clientSocket, "Unrecognized command");
+                    sendError(remoteSocket, "Unrecognized command");
                     break;
             }
         }
     } catch (BrokenPipe) {
         std::cout << "User " << username << " disconnected from device " << deviceId << "\n";
     } catch (TooManyDevices t) {
-        sendError(clientSocket, t.what());
+        sendError(remoteSocket, t.what());
     } 
 
     if (userDeviceManager != nullptr && deviceId != -1) {
         userDeviceManager->disconnectDevice(deviceId);
     }
-    close(clientSocket);
+    close(remoteSocket);
 }
 
 int main(int argc, char *argv[]) {
@@ -134,9 +138,8 @@ int main(int argc, char *argv[]) {
     std::filesystem::current_path(std::filesystem::current_path() / "data");
     int c = 0;
     while (true) {
-        int clientSocket = accept(sock_fd, nullptr, nullptr);
-        openConnections.push_back(std::thread(handleClient, clientSocket));
-        c++;
+        int remoteSocket = accept(sock_fd, nullptr, nullptr);
+        openConnections.push_back(std::thread(handleConnection, remoteSocket));
     }
 
     // Wait for all clients to close their connections

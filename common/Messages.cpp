@@ -24,6 +24,7 @@ std::map<MsgType, std::string> msgTypeNames = {
     {MsgType::MSG_STATUS_INQUIRY, "MSG_STATUS_INQUIRY"},
     {MsgType::MSG_SERVICE_STATUS, "MSG_SERVICE_STATUS"},
     {MsgType::MSG_SERVER_ADDRESS, "MSG_SERVER_ADDRESS"},
+    {MsgType::MSG_HEARTBEAT, "MSG_HEARTBEAT"},
 };
 
 std::string toString(MsgType type) { return msgTypeNames[type]; }
@@ -217,3 +218,15 @@ ServerAddress receiveServerAddress(int sock_fd) {
     return receivePayload<ServerAddress>(sock_fd, MsgType::MSG_SERVER_ADDRESS);
 }
 
+void sendHeartbeat(int sock_fd) {
+    sendMessage(sock_fd, MsgType::MSG_HEARTBEAT, nullptr, 0);
+}
+
+void waitHeartbeat(int sock_fd, int maxTimeout) {
+    Message msg = receiveMessage(sock_fd);
+    switch (msg.type) {
+        case MsgType::MSG_HEARTBEAT: return;
+        case MsgType::MSG_ERROR: throw ErrorReply(std::string(msg.payload, msg.payload + msg.len));
+        default: throw UnexpectedMsgType(MsgType::MSG_HEARTBEAT, msg.type);
+    }
+}
