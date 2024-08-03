@@ -13,11 +13,10 @@ void CLI::run(std::string username, std::string ip, int port) {
     bool newLine;
     struct pollfd cinFd;
 
-    if (!makeConnection(username, ip, port)) {
-        return;
-    }
+    makeConnection(username, ip, port);
     makeHistory();
     startClientState(AppState::STATE_UNTRACKED);
+    initializeHeartbeatMonitor();
     initializeCommandParser();
     initializeSyncDir();
 
@@ -36,13 +35,14 @@ void CLI::run(std::string username, std::string ip, int port) {
         }
     }
 
+    heartbeatThread.join();
     serverThread.join();
     clientThread.join();
 }
 
-bool CLI::makeConnection(std::string username, std::string ip, int port) {
+void CLI::makeConnection(std::string username, std::string ip, int port) {
     connection = std::make_shared<Connection>(Connection());
-    return connection->connectToServer(username, ip, port);
+    connection->connectToService(username, ip, port);
 }
 
 void CLI::makeHistory() {
@@ -56,6 +56,20 @@ void CLI::startClientState(AppState state) {
 void CLI::printPrompt() {
     std::cout << "> ";
     std::cout.flush();
+}
+
+void CLI::initializeHeartbeatMonitor() {
+    heartbeatMonitor = std::make_unique<HeartbeatMonitor>(
+            HeartbeatMonitor(
+                clientState,
+                connection
+            )
+    );
+
+    heartbeatThread = std::thread(
+            &HeartbeatMonitor::run,
+            std::ref(*heartbeatMonitor)
+    );
 }
 
 void CLI::initializeCommandParser() {

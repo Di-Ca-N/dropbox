@@ -30,6 +30,7 @@ enum class MsgType : u_int8_t {
     MSG_STATUS_INQUIRY,
     MSG_SERVICE_STATUS,
     MSG_SERVER_ADDRESS,
+    MSG_HEARTBEAT,
     MSG_OK,
     MSG_ERROR
 };
