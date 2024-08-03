@@ -1,6 +1,7 @@
 #include "SyncServerToClientHandler.hpp"
 
 #include <optional>
+#include <iostream>
 
 #include "Messages.hpp"
 #include "utils.hpp"
