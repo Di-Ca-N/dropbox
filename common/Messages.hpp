@@ -86,10 +86,26 @@ typedef struct {
 
 // Struct with the required data to perform authentication.
 // If the devices still does not have an Id, it must be set to 0.
+
+enum class AuthType : uint8_t { AUTH_CLIENT, AUTH_REPLICA };
+
 typedef struct {
     char username[MAX_USERNAME];
     uint8_t usernameLen;
     int deviceId;
+} ClientAuthData;
+
+typedef struct {
+    uint32_t ipAddress;
+    int replicaId;
+} ReplicaAuthData;
+
+typedef struct {
+    AuthType type;
+    union {
+       ClientAuthData clientData;
+       ReplicaAuthData replicaData;
+    };
 } AuthData;
 
 /* =========== HIGH-LEVEL API ============= */

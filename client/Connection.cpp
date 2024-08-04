@@ -45,13 +45,13 @@ void Connection::createSocket(int &socketDescr, std::string ip, int port) {
 }
 
 bool Connection::authenticate(int &socketDescr, std::string username) {
-    AuthData authData;
-    username.copy(authData.username, MAX_USERNAME);
-    authData.usernameLen = username.length();
+    AuthData authData = { .type=AuthType::AUTH_CLIENT };
+    username.copy(authData.clientData.username, MAX_USERNAME);
+    authData.clientData.usernameLen = username.length();
     if (this->deviceId == -1) {
-        authData.deviceId = 0;
+        authData.clientData.deviceId = 0;
     } else {
-        authData.deviceId = deviceId;
+        authData.clientData.deviceId = deviceId;
     }
 
     try {
@@ -59,7 +59,7 @@ bool Connection::authenticate(int &socketDescr, std::string username) {
         AuthData authResponse = receiveAuth(socketDescr);
 
         if (this->deviceId == -1) {
-            this->deviceId = authResponse.deviceId;
+            this->deviceId = authResponse.clientData.deviceId;
         }
         return true;
     } catch (UnexpectedMsgType) {
