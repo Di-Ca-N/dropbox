@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <unistd.h>
 #include <poll.h>
 #include <cstring>
 
@@ -13,38 +14,106 @@
 #include "ClientConfig.hpp"
 
 
-bool Connection::connectToServer(std::string username, std::string ip, int port) {
-    createSocket(commandSock, ip, port);
-    if (!authenticate(commandSock, username)) return false;
+void Connection::connectToService(std::string username, std::string ip, int port) {
+    this->username = username;
 
-    createSocket(writeSock, ip, port);
-    if (!authenticate(writeSock, username)) return false;
-    setWriteConnection(writeSock);
+    in_addr_t binderIp = convertIpStringToNetwork(ip);
+    in_port_t binderPort = convertPortIntToNetwork(port);
 
-    createSocket(readSock, ip, port);
-    if(!authenticate(readSock, username)) return false;
-    setReadConnection();
-    
+    connectToBinder(binderIp, binderPort);
+    retryConnection();
+}
+
+in_addr_t Connection::convertIpStringToNetwork(std::string ipString) {
+    in_addr ipNetwork;
+    inet_aton(ipString.data(), &ipNetwork);
+    return ipNetwork.s_addr;
+}
+
+in_port_t Connection::convertPortIntToNetwork(int port) {
+    return htons(port);
+}
+
+void Connection::connectToBinder(in_addr_t &ip, in_port_t &port) {
+    binderSock = createSocket(ip, port);
+}
+
+void Connection::retryConnection() {
+    ServiceStatus serviceStatus;
+    ServerAddress serverAddress;
+
+    try {
+        sendMessage(binderSock, MsgType::MSG_STATUS_INQUIRY, nullptr, 0); 
+        waitConfirmation(binderSock);
+        serviceStatus = receiveServiceStatus(binderSock);
+        sendOk(binderSock);
+
+        if (serviceStatus.status == ServiceStatusType::ONLINE) {
+            serverAddress = receiveServerAddress(binderSock); 
+            sendOk(binderSock);
+            connectToServer(serverAddress.ip, serverAddress.port);
+        }
+    } catch (BrokenPipe) {
+        std::cout << "Connection with binder was broken\n";
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
+    }
+}
+
+void Connection::connectToServer(in_addr_t &ip, in_port_t &port) {
+    try {
+        heartbeatSock = createSocket(ip, port);
+        // TODO: informar conexão de heartbeat
+
+        commandSock = createSocket(ip, port);
+        authenticate(commandSock, username);
+
+        readSock = createSocket(ip, port);
+        authenticate(writeSock, username);
+        setWriteConnection(writeSock);
+
+        writeSock = createSocket(ip, port);
+        authenticate(readSock, username);
+        setReadConnection();
+    } catch (...) {
+        // Ou conecta todos, ou não conecta nenhum.
+        close(heartbeatSock);
+        close(commandSock);
+        close(readSock);
+        close(writeSock);
+    }
+}
+
+bool Connection::hearsHeartbeat(int timeout) {
+    try {
+        waitHeartbeat(heartbeatSock, timeout);
+    } catch (...) {
+        return false;
+    }
+
     return true;
 }
 
-void Connection::createSocket(int &socketDescr, std::string ip, int port) {
+int Connection::createSocket(in_addr_t &ip, in_port_t &port) {
     int serverConnection = socket(AF_INET, SOCK_STREAM, 0);
 
     sockaddr_in addr;
-    addr.sin_port = htons(port);
     addr.sin_family = AF_INET;
-    inet_aton(ip.data(), &addr.sin_addr);
+    addr.sin_addr.s_addr = ip;
+    addr.sin_port = port;
  
     if (connect(serverConnection, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
         std::cout << "Error when connecting to server\n";
-        return;
+        return -1;
     }
 
-    socketDescr = serverConnection;
+    return serverConnection;
 }
 
-bool Connection::authenticate(int &socketDescr, std::string username) {
+// Cuidado: pode lançar exceções.
+void Connection::authenticate(int &socketDescr, std::string username) {
     AuthData authData;
     username.copy(authData.username, MAX_USERNAME);
     authData.usernameLen = username.length();
@@ -54,22 +123,11 @@ bool Connection::authenticate(int &socketDescr, std::string username) {
         authData.deviceId = deviceId;
     }
 
-    try {
-        sendAuth(socketDescr, authData);
-        AuthData authResponse = receiveAuth(socketDescr);
+    sendAuth(socketDescr, authData);
+    AuthData authResponse = receiveAuth(socketDescr);
 
-        if (this->deviceId == -1) {
-            this->deviceId = authResponse.deviceId;
-        }
-        return true;
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response.\n";
-        return false;
-    } catch (ErrorReply e) {
-        std::cout << "Error: " << e.what() << "\n";
-        return false;
-    } catch (BrokenPipe) {
-        return false;
+    if (this->deviceId == -1) {
+        this->deviceId = authResponse.deviceId;
     }
 }
 
@@ -132,8 +190,6 @@ void Connection::upload(std::filesystem::path filepath) {
         waitConfirmation(commandSock);
 
         std::cout << "Upload successful!\n";
-    } catch (BrokenPipe) {
-        std::cout << "Connection broken during operation aaaa\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {
@@ -161,8 +217,6 @@ void Connection::download(std::filesystem::path filepath) {
         sendOk(commandSock);
 
         std::cout << "Download successful\n";
-    } catch (BrokenPipe) {
-        std::cout << "Connection broken during operation\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {
@@ -185,8 +239,6 @@ void Connection::delete_(std::filesystem::path filepath) {
         waitConfirmation(commandSock);
 
         std::cout << "File deleted successfully\n";
-    } catch (BrokenPipe) {
-        std::cout << "Connection broken during operation\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {
@@ -209,8 +261,6 @@ std::vector<FileMeta> Connection::listServer() {
             fileMetas.push_back(receiveFileMeta(commandSock));
 
         sendOk(commandSock);
-    } catch(BrokenPipe) {
-        std::cout << "Connection broken during operation\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {

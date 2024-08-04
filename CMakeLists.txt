@@ -33,6 +33,7 @@ add_executable(client
     client/Connection.cpp
     client/ClientMonitor.cpp
     client/ServerMonitor.cpp
+    client/HeartbeatMonitor.cpp
     client/ClientState.cpp
     client/CommandParser.cpp
     client/CommandCreator.cpp
