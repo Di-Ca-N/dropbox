@@ -24,6 +24,7 @@ add_executable(server
     server/handlers/HeartBeatHandler.cpp
     server/SyncQueue.cpp
     server/DeviceManager.cpp
+    server/ReplicaConnection.cpp
     common/Messages.cpp
     common/utils.cpp
 )

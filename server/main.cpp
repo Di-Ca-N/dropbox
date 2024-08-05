@@ -6,6 +6,8 @@
 #include <thread>
 #include <vector>
 #include <filesystem>
+#include <string.h>
+#include <memory>
 
 #include "Messages.hpp"
 #include "handlers/UploadHandler.hpp"
@@ -16,19 +18,39 @@
 #include "handlers/SyncClientToServerHandler.hpp"
 #include "handlers/HeartBeatHandler.hpp"
 #include "DeviceManager.hpp"
+#include "ReplicaConnection.hpp"
+
 
 #define MAX_USER_DEVICES 2
 
 std::map<std::string, DeviceManager*> deviceManagers;
 std::mutex userRegisterMutex;
+std::shared_ptr<ReplicaConnection> replicaConnectionPtr;
 
-void handleConnection(int clientSocket) {
+
+void handleConnection(int clientSocket, sockaddr_in clientAddr) {
     DeviceManager *userDeviceManager = nullptr;
     int deviceId = -1;
     std::string username;
+    uint32_t clientIp;
 
     try {
         AuthData authData = receiveAuth(clientSocket);
+
+        if(authData.type == AuthType::AUTH_REPLICA) {
+            ReplicaAuthData replicaData = authData.replicaData;
+            clientIp = ntohl(clientAddr.sin_addr.s_addr);
+            
+            replicaData.ipAddress = clientIp;
+            replicaData.replicaId = authData.replicaData.replicaId;
+            authData.replicaData = replicaData;
+
+            std::cout << authData.replicaData.ipAddress << std::endl;
+            sendAuth(clientSocket, authData);
+
+            return;
+        }
+
         ClientAuthData clientData = authData.clientData; 
             
         username = std::string(clientData.username, clientData.usernameLen);
@@ -99,7 +121,7 @@ void handleConnection(int clientSocket) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 2) {
+    if (argc != 2 && argc != 5) {
         fprintf(stderr, "Usage: server <port>\n");
         return 1;
     }
@@ -110,6 +132,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Error on creating socket\n");
         return 1;
     }
+    
     int optVal = 1;
     setsockopt(sock_fd, 1, SO_REUSEADDR, &optVal, sizeof(optVal));
 
@@ -134,14 +157,24 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Server listening on port " << argv[1] << "\n";
 
+    if (argc == 5) {
+        int port = std::stoi(argv[3]);
+        int deviceId = std::stoi(argv[4]);
+        
+        replicaConnectionPtr = std::make_shared<ReplicaConnection>(ReplicaConnection(deviceId));
+        if (!replicaConnectionPtr->setConnection(argv[2], port)) return 1;
+    }
+
     std::vector<std::thread> openConnections;
     std::filesystem::path dataDir = std::filesystem::current_path() / "data";
     std::filesystem::create_directories(dataDir);
     std::filesystem::current_path(std::filesystem::current_path() / "data");
     int c = 0;
     while (true) {
-        int clientSocket = accept(sock_fd, nullptr, nullptr);
-        openConnections.push_back(std::thread(handleConnection, clientSocket));
+        sockaddr_in clientAddr;
+        socklen_t clientAddrSize = sizeof(clientAddr);
+        int clientSocket = accept(sock_fd, (sockaddr*)&clientAddr, &clientAddrSize);
+        openConnections.push_back(std::thread(handleConnection, clientSocket, clientAddr));
     }
 
     // Wait for all clients to close their connections
