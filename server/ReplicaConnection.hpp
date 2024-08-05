@@ -1,19 +1,20 @@
 #pragma once
 
 #include "Messages.hpp"
-#include <thread>
+#include "ReplicaThread.hpp"
 
 
 class ReplicaConnection {
+    std::shared_ptr<ReplicaThread> replicaThread;
+
     private:
         int replicaSock = -1;
         int replicaId;
         uint32_t replicaIpAddress;
-        std::thread replicaThread;
 
         void createSocket(int &socketDescr, std::string ip, int port);
         bool replicaAuth(int &socketDescr, int replicaId);
-        void getServerData(int &socketDescr);
+        void runReplicaThread(int &socketDescr);
 
     public:
         ReplicaConnection(int replicaId);

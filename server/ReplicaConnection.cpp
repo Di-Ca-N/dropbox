@@ -13,6 +13,7 @@ ReplicaConnection::ReplicaConnection(int replicaId) {
 bool ReplicaConnection::setConnection(std::string ip, int port) {
     createSocket(this->replicaSock, ip, port);
     if(!replicaAuth(this->replicaSock, replicaId)) return false;
+    runReplicaThread(this->replicaSock);
 
     return true;
 }
@@ -54,5 +55,10 @@ bool ReplicaConnection::replicaAuth(int &socketDescr, int replicaId) {
     }
 
     return true;
+}
+
+void ReplicaConnection::runReplicaThread(int &socketDescr) {
+    replicaThread = std::make_shared<ReplicaThread>();
+    replicaThread->run(socketDescr);
 }
 
