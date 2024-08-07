@@ -67,10 +67,10 @@ void handleConnection(int clientSocket, sockaddr_in clientAddr) {
     
         if (clientData.deviceId == 0) { // Unknown device
             Device device = userDeviceManager->registerDevice();
-            clientData.deviceId = device.id;
+            authData.clientData.deviceId = device.id;
             std::cout << "User " << username << " connected a new device. Assigned id " << device.id << "\n";
         }
-        deviceId = clientData.deviceId;
+        deviceId = authData.clientData.deviceId;
         userDeviceManager->connectDevice(deviceId);
         sendAuth(clientSocket, authData);
 
