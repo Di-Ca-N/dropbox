@@ -114,8 +114,6 @@ void sendError(int sock_fd, std::string errorMsg) {
 void waitConfirmation(int sock_fd) {
     Message msg = receiveMessage(sock_fd);
 
-    // printMsg(&msg);
-
     if (msg.type != MsgType::MSG_OK) {
         if (msg.type == MsgType::MSG_ERROR) {
             throw ErrorReply(std::string(msg.payload, msg.payload + msg.len));
@@ -230,3 +228,20 @@ void waitHeartbeat(int sock_fd, int maxTimeout) {
         default: throw UnexpectedMsgType(MsgType::MSG_HEARTBEAT, msg.type);
     }
 }
+
+void sendUpdateType(int sock_fd, UpdateType updateType) {
+    sendMessage(sock_fd, MsgType::MSG_UPDATE_TYPE, &updateType, sizeof(updateType));
+}
+
+UpdateType receiveUpdateType(int sock_fd) {
+    return receivePayload<UpdateType>(sock_fd, MsgType::MSG_UPDATE_TYPE);
+}
+
+void sendReplicaData(int sock_fd, ReplicaData replicaData) {
+    sendMessage(sock_fd, MsgType::MSG_REPLICA_DATA, &replicaData, sizeof(replicaData));
+}
+
+ReplicaData receiveReplicaData(int sock_fd) {
+    return receivePayload<ReplicaData>(sock_fd, MsgType::MSG_REPLICA_DATA);
+}
+

@@ -2,6 +2,7 @@
 
 #include "Messages.hpp"
 #include "ReplicaThread.hpp"
+#include "ReplicaManager.hpp"
 
 
 class ReplicaConnection {
@@ -14,9 +15,10 @@ class ReplicaConnection {
 
         void createSocket(int &socketDescr, std::string ip, int port);
         bool replicaAuth(int &socketDescr, int replicaId);
-        void runReplicaThread(int &socketDescr);
+        void runReplicaThread(int &socketDescr, ReplicaManager* replicaManager);
+        void initializeReplicaManager(int &socketDescr, ReplicaManager* replicaManager);
 
     public:
         ReplicaConnection(int replicaId);
-        bool setConnection(std::string ip, int port);
+        bool setConnection(std::string ip, int port, ReplicaManager* replicaManager);
 };

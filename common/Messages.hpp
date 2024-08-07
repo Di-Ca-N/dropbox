@@ -31,6 +31,8 @@ enum class MsgType : u_int8_t {
     MSG_SERVICE_STATUS,
     MSG_SERVER_ADDRESS,
     MSG_HEARTBEAT,
+    MSG_UPDATE_TYPE,
+    MSG_REPLICA_DATA,
     MSG_OK,
     MSG_ERROR
 };
@@ -115,6 +117,14 @@ typedef struct {
     };
 } AuthData;
 
+enum class UpdateType : uint8_t { UPDATE_CONNECTION, UPDATE_FILE_OP };
+
+typedef struct {
+    int replicaId;
+    uint32_t replicaIp;
+    int socketDescr;
+} ReplicaData;
+
 /* =========== HIGH-LEVEL API ============= */
 /* This high-level API provide utility functions for sending and receiving each data 
  * type provided in our protocol implementation. These functions ensure that the sent 
@@ -145,6 +155,10 @@ void sendServerAddress(int sock_fd, ServerAddress address);
 ServerAddress receiveServerAddress(int sock_fd);
 void sendHeartbeat(int sock_fd);
 void waitHeartbeat(int sock_fd, int maxTimeout);
+void sendUpdateType(int sock_fd, UpdateType updateType);
+UpdateType receiveUpdateType(int sock_fd);
+void sendReplicaData(int sock_fd, ReplicaData replicaData);
+ReplicaData receiveReplicaData(int sock_fd);
 
 /* =========== LOW-LEVEL API ============= */
 /* This is the low-level API of our protocol, dealing directly with sending and receiving 

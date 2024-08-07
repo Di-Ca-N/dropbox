@@ -26,6 +26,7 @@ add_executable(server
     server/DeviceManager.cpp
     server/ReplicaConnection.cpp
     server/ReplicaThread.cpp
+    server/ReplicaManager.cpp
     common/Messages.cpp
     common/utils.cpp
 )

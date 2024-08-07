@@ -2,6 +2,8 @@
 
 #include <thread>
 #include <Messages.hpp>
+#include "ReplicaManager.hpp"
+
 
 class ReplicaThread {
 private:
@@ -9,6 +11,6 @@ private:
     void getServerUpdates(int socketDescr);
 
 public:
-    void run(int &socketDescr);
+    void run(int &socketDescr, ReplicaManager* replicaManager);
     ~ReplicaThread();
 };

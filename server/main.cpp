@@ -19,6 +19,7 @@
 #include "handlers/HeartBeatHandler.hpp"
 #include "DeviceManager.hpp"
 #include "ReplicaConnection.hpp"
+#include "ReplicaManager.hpp"
 
 
 #define MAX_USER_DEVICES 2
@@ -83,7 +84,7 @@ void handleClient(int clientSocket, AuthData authData) {
 
         Device device = userDeviceManager->getDevice(clientData.deviceId);
 
-        while (true) {
+            while (true) {
             Message msg = receiveMessage(clientSocket);
 
             switch(msg.type) {
@@ -112,6 +113,7 @@ void handleClient(int clientSocket, AuthData authData) {
                     sendError(clientSocket, "Unrecognized command");
                     break;
             }
+        }
         }
     } catch (BrokenPipe) {
         std::cout << "User " << username << " disconnected from device " << clientData.deviceId << "\n";
@@ -155,7 +157,7 @@ int main(int argc, char *argv[]) {
     }
 
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
-
+    
     if (sock_fd == -1) {
         fprintf(stderr, "Error on creating socket\n");
         return 1;
@@ -190,8 +192,10 @@ int main(int argc, char *argv[]) {
         int deviceId = std::stoi(argv[4]);
         
         replicaConnectionPtr = std::make_shared<ReplicaConnection>(ReplicaConnection(deviceId));
-        if (!replicaConnectionPtr->setConnection(argv[2], port)) return 1;
+        if (!replicaConnectionPtr->setConnection(argv[2], port, replicaManager)) return 1;
     }
+
+ 
 
     std::vector<std::thread> openConnections;
     std::filesystem::path dataDir = std::filesystem::current_path() / "data";

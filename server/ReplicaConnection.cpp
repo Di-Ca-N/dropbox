@@ -10,10 +10,11 @@ ReplicaConnection::ReplicaConnection(int replicaId) {
     this->replicaId = replicaId;
 }
 
-bool ReplicaConnection::setConnection(std::string ip, int port) {
+bool ReplicaConnection::setConnection(std::string ip, int port, ReplicaManager* replicaManager) {
     createSocket(this->replicaSock, ip, port);
     if(!replicaAuth(this->replicaSock, replicaId)) return false;
-    runReplicaThread(this->replicaSock);
+    initializeReplicaManager(this->replicaSock, replicaManager);
+    runReplicaThread(this->replicaSock, replicaManager);
 
     return true;
 }
@@ -43,7 +44,6 @@ bool ReplicaConnection::replicaAuth(int &socketDescr, int replicaId) {
         AuthData authResponse = receiveAuth(socketDescr);
         this->replicaIpAddress = authResponse.replicaData.ipAddress;
 
-        std::cout << this->replicaIpAddress << std::endl;
     } catch (UnexpectedMsgType) {
         std::cout << "Unexpected response.\n";
         return false;
@@ -57,8 +57,25 @@ bool ReplicaConnection::replicaAuth(int &socketDescr, int replicaId) {
     return true;
 }
 
-void ReplicaConnection::runReplicaThread(int &socketDescr) {
+void ReplicaConnection::runReplicaThread(int &socketDescr, ReplicaManager* replicaManager) {
     replicaThread = std::make_shared<ReplicaThread>();
-    replicaThread->run(socketDescr);
+    replicaThread->run(socketDescr, replicaManager);
+}
+
+void ReplicaConnection::initializeReplicaManager(int &socketDescr, ReplicaManager* replicaManager) {
+    ReplicaData replicaData;
+    int numReplicas = 0;
+
+    numReplicas = receiveNumFiles(socketDescr);
+    std::cout << numReplicas << std::endl;
+    sendOk(socketDescr);
+    replicaManager = new ReplicaManager();
+
+    for(int i = 0; i < numReplicas; i++) {
+        replicaData = receiveReplicaData(socketDescr);
+        replicaManager->pushReplica(replicaData.replicaId, replicaData.replicaIp, replicaData.socketDescr);
+    }
+
+    replicaManager->printReplicas();
 }
 
