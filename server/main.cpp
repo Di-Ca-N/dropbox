@@ -27,56 +27,61 @@ std::map<std::string, DeviceManager*> deviceManagers;
 std::mutex userRegisterMutex;
 std::shared_ptr<ReplicaConnection> replicaConnectionPtr;
 
+void handleConnection(int remoteSocket, sockaddr_in remoteAddr) {
+    try {
+        AuthData authData = receiveAuth(remoteSocket);
 
-void handleConnection(int clientSocket, sockaddr_in clientAddr) {
-    DeviceManager *userDeviceManager = nullptr;
-    int deviceId = -1;
-    std::string username;
-    uint32_t clientIp;
+        switch (authData.type) {
+            case AuthType::AUTH_CLIENT:
+                handleClient(remoteSocket, authData);
+                break;
+            case AuthType::AUTH_REPLICA:
+                handleReplica(remoteSocket, remoteAddr, authData);
+                break;
+        }
+    } catch (BrokenPipe) {
+
+    }
+    close(remoteSocket);
+}
+
+void handleClient(int clientSocket, AuthData authData) {
+    ClientAuthData clientData = authData.clientData; 
+    std::string username(clientData.username, clientData.usernameLen);
+    std::filesystem::create_directory(username);
+
+    {
+        std::lock_guard<std::mutex> lock(userRegisterMutex);
+        if (deviceManagers.find(username) == deviceManagers.end()) {
+            deviceManagers[username] = new DeviceManager(username, MAX_USER_DEVICES);
+        }
+    }
+
+    DeviceManager *userDeviceManager = deviceManagers[username];
 
     try {
-        AuthData authData = receiveAuth(clientSocket);
-
-        if(authData.type == AuthType::AUTH_REPLICA) {
-            ReplicaAuthData replicaData = authData.replicaData;
-            clientIp = ntohl(clientAddr.sin_addr.s_addr);
-            
-            replicaData.ipAddress = clientIp;
-            replicaData.replicaId = authData.replicaData.replicaId;
-            authData.replicaData = replicaData;
-
-            std::cout << authData.replicaData.ipAddress << std::endl;
-            sendAuth(clientSocket, authData);
-
-            return;
-        }
-
-        ClientAuthData clientData = authData.clientData; 
-            
-        username = std::string(clientData.username, clientData.usernameLen);
-        std::filesystem::create_directory(username);
-
-        {
-            std::lock_guard<std::mutex> lock(userRegisterMutex);
-            if (deviceManagers.find(username) == deviceManagers.end()) {
-                deviceManagers[username] = new DeviceManager(username, MAX_USER_DEVICES);
-            }
-        }
-
-        userDeviceManager = deviceManagers[username];
-    
         if (clientData.deviceId == 0) { // Unknown device
             Device device = userDeviceManager->registerDevice();
-            authData.clientData.deviceId = device.id;
+            clientData.deviceId = device.id;
             std::cout << "User " << username << " connected a new device. Assigned id " << device.id << "\n";
         }
-        deviceId = authData.clientData.deviceId;
-        userDeviceManager->connectDevice(deviceId);
+    } catch (TooManyDevices t) {
+        try {
+            sendError(clientSocket, t.what());
+        } catch (BrokenPipe) {}
+
+        return;
+    }
+
+    userDeviceManager->connectDevice(clientData.deviceId);
+
+    try {
+        authData.clientData = clientData;
         sendAuth(clientSocket, authData);
 
-        std::cout << "User " << username << " authenticated with device " << deviceId << "\n";
+        std::cout << "User " << username << " authenticated with device " << clientData.deviceId << "\n";
 
-        Device device = userDeviceManager->getDevice(deviceId);
+        Device device = userDeviceManager->getDevice(clientData.deviceId);
 
         while (true) {
             Message msg = receiveMessage(clientSocket);
@@ -98,7 +103,7 @@ void handleConnection(int clientSocket, sockaddr_in clientAddr) {
                     SyncServerToClientHandler(username, clientSocket, device).run();
                     break;
                 case MsgType::MSG_SYNC_CLIENT_TO_SERVER:
-                    SyncClientToServerHandler(username, clientSocket, deviceId, userDeviceManager).run();
+                    SyncClientToServerHandler(username, clientSocket, clientData.deviceId, userDeviceManager).run();
                     break;
                 case MsgType::MSG_HEARTBEAT:
                     HeartBeatHandler(clientSocket).run();
@@ -109,15 +114,38 @@ void handleConnection(int clientSocket, sockaddr_in clientAddr) {
             }
         }
     } catch (BrokenPipe) {
-        std::cout << "User " << username << " disconnected from device " << deviceId << "\n";
-    } catch (TooManyDevices t) {
-        sendError(clientSocket, t.what());
+        std::cout << "User " << username << " disconnected from device " << clientData.deviceId << "\n";
     } 
 
-    if (userDeviceManager != nullptr && deviceId != -1) {
-        userDeviceManager->disconnectDevice(deviceId);
+    userDeviceManager->disconnectDevice(clientData.deviceId);
+}
+
+void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData) {
+    ReplicaAuthData replicaData = authData.replicaData;
+    
+    replicaData.ipAddress = replicaAddr.sin_addr.s_addr;
+    replicaData.replicaId = authData.replicaData.replicaId;
+    authData.replicaData = replicaData;
+
+    std::cout << authData.replicaData.ipAddress << std::endl;
+    try {
+        sendAuth(replicaSocket, authData);
+
+        Message msg = receiveMessage(replicaSocket);
+
+        switch (msg.type) {
+            case MsgType::MSG_HEARTBEAT:
+                HeartBeatHandler(replicaSocket).run();
+                break;
+            
+            default:
+                break;
+        }
+    } catch (BrokenPipe) {
+        char ipString[16];
+        inet_ntop(AF_INET, &replicaData.ipAddress, ipString, 16);
+        std::cout << "Lost connection to replica " << ipString << "\n";
     }
-    close(clientSocket);
 }
 
 int main(int argc, char *argv[]) {
