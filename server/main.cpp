@@ -43,11 +43,9 @@ ServerAddress findNextServerAddr(){
     for (int i = 0; i < replicas.size(); i++) {
         if (replicas[i] == myAddress) {
             int nextIdx = (i + 1) % replicas.size();
-            std::cout << "Next server idx: " << nextIdx << std::endl;
             return replicas[nextIdx];
         }
     }
-        std::cout << "aaaa\n";
 }
 
 void handleClient(int clientSocket, AuthData authData) {
@@ -126,19 +124,20 @@ void handleClient(int clientSocket, AuthData authData) {
 }
 
 void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData) {
-    std::cout << "Replica connected\n";
     ReplicaAuthData replicaData = authData.replicaData;
 
     if(replicaManager == nullptr) {
         replicaManager = new ReplicaManager();
     }
     
-    replicaData.ipAddress = replicaAddr.sin_addr.s_addr;
+    replicaData.replicaAddr = {
+        .ip=replicaAddr.sin_addr.s_addr,
+        .port=authData.replicaData.replicaAddr.port
+    };
     replicaData.replicaId = authData.replicaData.replicaId;
     authData.replicaData = replicaData;
 
-
-    std::cout << authData.replicaData.ipAddress << std::endl;
+    std::cout << "Replica " << replicaData.replicaAddr << " connected\n";
             
     try {
         sendAuth(replicaSocket, authData);
@@ -150,7 +149,7 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
                 HeartBeatHandler(replicaSocket).run();
                 break;
             case MsgType::MSG_UPDATE_TYPE:
-                ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.ipAddress, replicaManager).run();
+                ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.replicaAddr.ip, replicaManager).run();
                 break;
 
             case MsgType::MSG_ELECTION:
@@ -165,9 +164,8 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
                 break;
         }
     } catch (BrokenPipe) {
-        char ipString[16];
-        inet_ntop(AF_INET, &replicaData.ipAddress, ipString, 16);
-        std::cout << "Lost connection to replica " << ipString << "\n";
+
+        std::cout << "Lost connection to replica " << replicaData.replicaAddr << "\n";
     }
 }
 
@@ -193,13 +191,17 @@ void handleConnection(int remoteSocket, sockaddr_in remoteAddr) {
 void electionMonitor(ServerAddress primaryAddr) {
     AuthData authData = {
         .type=AuthType::AUTH_REPLICA,
+        .replicaData={
+            .replicaAddr=myAddress,
+            .replicaId=myId,
+        }
     };
 
     electionManager = new ElectionManager(0, primaryAddr);
-    
+
     while (electionManager->getLeader() != myId) {
         try {
-            int primarySock = openSocketTo(primaryAddr);
+            int primarySock = openSocketTo(electionManager->getLeaderAddress());
             if (primarySock == -1) {
                 std::cout << "Cannot connect to primary server\n";
                 return;
@@ -217,13 +219,13 @@ void electionMonitor(ServerAddress primaryAddr) {
             std::cout << "Primary died. Starting election.\n";
 
             ServerAddress nextServerAddr = findNextServerAddr();
-            std::cout << "Next Server: IP="<<nextServerAddr.ip << " Port="<<nextServerAddr.port << std::endl;
+            std::cout << "Connecting to next replica " << nextServerAddr << "\n";
             int nextServer = openSocketTo(nextServerAddr);
             if (nextServer == -1) {
                 std::cout << "Cannot connect to next server on ring\n";
                 return;
             }
-            
+
             try {
                 electionManager->markParticipation();
                 sendAuth(nextServer, authData);
@@ -246,6 +248,7 @@ void electionMonitor(ServerAddress primaryAddr) {
                 std::cout << e.what() << "\n";
             }
         }
+        std::cout << "Waiting election finish\n";
         electionManager->waitElectionEnd();
         // Wait for the election to end 
     }
@@ -289,15 +292,15 @@ int main(int argc, char *argv[]) {
 
         
     if (argc == 5) {
-        uint16_t port = atoi(argv[3]);
+        uint16_t port = htons(atoi(argv[3]));
         myAddress.port = htons(atoi(argv[1]));
-        std::cout << myAddress.port << "\n";
         myId = std::stoi(argv[4]);
-        
         ServerAddress primaryAddr;
-
         inet_pton(AF_INET, argv[2], &primaryAddr.ip);
-        primaryAddr.port = htons(port);
+        primaryAddr.port = port;
+
+        std::cout << "My replica address: " << myAddress << "\n";
+        std::cout << "Connecting to primary " << primaryAddr << "\n";
 
         // Hard coded for now...
         replicas.push_back((ServerAddress){.ip=16777343, .port=htons(8001)});
@@ -312,6 +315,7 @@ int main(int argc, char *argv[]) {
     std::filesystem::path dataDir = std::filesystem::current_path() / "data";
     std::filesystem::create_directories(dataDir);
     std::filesystem::current_path(std::filesystem::current_path() / "data");
+
     int c = 0;
     while (true) {
         sockaddr_in clientAddr;

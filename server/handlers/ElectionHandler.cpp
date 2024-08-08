@@ -17,7 +17,6 @@ ElectionHandler::ElectionHandler(
 }
 
 void ElectionHandler::run() {
-    std::cout << "ElectionHandler\n";
     try {
         sendOk(replicaSocket);
 
@@ -29,7 +28,7 @@ void ElectionHandler::run() {
         AuthData authData = {
             .type=AuthType::AUTH_REPLICA, 
             .replicaData = {
-                .ipAddress=myAddress.ip,
+                .replicaAddr=myAddress,
                 .replicaId=myId
             }
         };

@@ -91,6 +91,7 @@ typedef struct {
 } ServerAddress;
 
 bool operator==(ServerAddress addr1, ServerAddress addr2);
+std::ostream& operator<<(std::ostream& os, const ServerAddress& addr);
 
 // === Authentication related data types ===
 
@@ -108,7 +109,7 @@ typedef struct {
 // Contains data required for replica authentication. The field ipAddress may be empty
 // and the server will reply with the IP used for the connection.
 typedef struct {
-    uint32_t ipAddress;
+    ServerAddress replicaAddr;
     int replicaId;
 } ReplicaAuthData;
 

@@ -11,8 +11,13 @@ int ElectionManager::getLeader() {
     return this->leaderId;
 }
 
+ServerAddress ElectionManager::getLeaderAddress() {
+    return this->leaderAddr;
+}
+
 void ElectionManager::setLeader(int leaderId, ServerAddress leaderAddress) {
     this->leaderId = leaderId;
+    this->leaderAddr = leaderAddress;
     std::cout << "Store new leader\n";
     // ToDo: Notify nameserver about new primary
 }

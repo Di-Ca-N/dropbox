@@ -2,6 +2,7 @@
 
 #include <sys/socket.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 #include <cstring>
 #include <iostream>
@@ -31,6 +32,13 @@ std::string toString(MsgType type) { return msgTypeNames[type]; }
 
 bool operator==(ServerAddress addr1, ServerAddress addr2) {
     return addr1.ip == addr2.ip && addr1.port == addr2.port;
+}
+
+std::ostream &operator<<(std::ostream &os, const ServerAddress &addr) {
+    char ipString[16];
+    inet_ntop(AF_INET, &addr.ip, ipString, 16);
+    os << ipString << ":" << ntohs(addr.port);
+    return os;
 }
 
 Message receiveMessage(int sock_fd) {

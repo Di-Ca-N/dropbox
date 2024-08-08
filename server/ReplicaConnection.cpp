@@ -43,7 +43,7 @@ bool ReplicaConnection::replicaAuth(int &socketDescr, int replicaId) {
     try {
         sendAuth(socketDescr, authData);
         AuthData authResponse = receiveAuth(socketDescr);
-        this->replicaIpAddress = authResponse.replicaData.ipAddress;
+        this->replicaIpAddress = authResponse.replicaData.replicaAddr.ip;
 
     } catch (UnexpectedMsgType) {
         std::cout << "Unexpected response.\n";

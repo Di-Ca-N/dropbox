@@ -8,6 +8,7 @@
 class ElectionManager {
     private:
         int leaderId;
+        ServerAddress leaderAddr;
         bool candidate = false;
         std::mutex mutex;
         std::condition_variable electionRunning;
@@ -15,6 +16,7 @@ class ElectionManager {
         ElectionManager(int leaderId, ServerAddress leaderAddress);
         void setLeader(int leaderId, ServerAddress leaderAddress);
         int getLeader();
+        ServerAddress getLeaderAddress();
         void finishElection();
         void waitElectionEnd(); 
         bool isParticipating();

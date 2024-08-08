@@ -17,6 +17,7 @@ void ElectedHandler::run() {
         std::cout << "Elected leader with id " << ballot.id << std::endl;
         sendOk(replicaSocket);
         manager->setLeader(ballot.id, ballot.address);
+        manager->finishElection();
         if (ballot.id == this->id) return;
 
         int nextServer = openSocketTo(nextServerAddr);
