@@ -229,6 +229,10 @@ void waitHeartbeat(int sock_fd, int maxTimeout) {
     }
 }
 
+void sendUpdate(int sock_fd) {
+    sendMessage(sock_fd, MsgType::MSG_UPDATE_TYPE, nullptr, 0);
+}
+
 void sendUpdateType(int sock_fd, UpdateType updateType) {
     sendMessage(sock_fd, MsgType::MSG_UPDATE_TYPE, &updateType, sizeof(updateType));
 }

@@ -107,10 +107,15 @@ void handleClient(int clientSocket, AuthData authData) {
 
 void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData) {
     ReplicaAuthData replicaData = authData.replicaData;
+
+    if(replicaManager == nullptr) {
+        replicaManager = new ReplicaManager();
+    }
     
     replicaData.ipAddress = replicaAddr.sin_addr.s_addr;
     replicaData.replicaId = authData.replicaData.replicaId;
     authData.replicaData = replicaData;
+
 
     std::cout << authData.replicaData.ipAddress << std::endl;
             
@@ -124,15 +129,7 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
                 HeartBeatHandler(replicaSocket).run();
                 break;
             case MsgType::MSG_UPDATE_TYPE:
-                if(replicaManager == nullptr) {
-                    replicaManager = new ReplicaManager();
-                }
-                sendOk(replicaSocket);
-                replicaManager->pushReplica(replicaData.replicaId, replicaData.ipAddress, replicaSocket);
-                replicaManager->sendAllReplicas(replicaSocket);
-                replicaManager->updateReplica(replicaSocket, replicaData.replicaId);
-                std::cout << "Primary pushReplica" << std::endl;
-                replicaManager->printReplicas();
+                ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.ipAddress, replicaManager).run();
                 break;
             default:
                 break;

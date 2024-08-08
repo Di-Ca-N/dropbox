@@ -22,6 +22,7 @@ add_executable(server
     server/handlers/SyncServerToClientHandler.cpp
     server/handlers/SyncClientToServerHandler.cpp
     server/handlers/HeartBeatHandler.cpp
+    server/handlers/ReplicaConnectionHandler.cpp
     server/SyncQueue.cpp
     server/DeviceManager.cpp
     server/ReplicaConnection.cpp

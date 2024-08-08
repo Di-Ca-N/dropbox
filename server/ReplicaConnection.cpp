@@ -61,7 +61,7 @@ bool ReplicaConnection::replicaAuth(int &socketDescr, int replicaId) {
 bool ReplicaConnection::createUpdateType(int &socketDescr) {
 
     try {
-        sendUpdateType(socketDescr, UpdateType::UPDATE_CONNECTION_START);
+        sendUpdate(socketDescr);
         waitConfirmation(socketDescr);
         return true;
     } catch (UnexpectedMsgType) {
@@ -83,6 +83,9 @@ void ReplicaConnection::runReplicaThread(int &socketDescr, ReplicaManager* repli
 void ReplicaConnection::initializeReplicaManager(int &socketDescr, ReplicaManager* replicaManager) {
     ReplicaData replicaData;
     int numReplicas = 0;
+
+    sendUpdateType(socketDescr, UpdateType::UPDATE_CONNECTION_START);
+    waitConfirmation(socketDescr);
 
     numReplicas = receiveNumFiles(socketDescr);
     sendOk(socketDescr);
