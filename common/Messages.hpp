@@ -31,8 +31,12 @@ enum class MsgType : u_int8_t {
     MSG_SERVICE_STATUS,
     MSG_SERVER_ADDRESS,
     MSG_HEARTBEAT,
+    MSG_REPLICA_SYNC,
     MSG_UPDATE_TYPE,
     MSG_REPLICA_DATA,
+    MSG_ELECTION,
+    MSG_ELECTED,
+    MSG_BALLOT,
     MSG_OK,
     MSG_ERROR
 };
@@ -86,6 +90,8 @@ typedef struct {
     in_port_t port;
 } ServerAddress;
 
+bool operator==(ServerAddress addr1, ServerAddress addr2);
+
 // === Authentication related data types ===
 
 // Indicates the source of the authentication request
@@ -125,6 +131,11 @@ typedef struct {
     int socketDescr;
 } ReplicaData;
 
+typedef struct {
+    ServerAddress address;
+    int id;
+} Ballot;
+
 /* =========== HIGH-LEVEL API ============= */
 /* This high-level API provide utility functions for sending and receiving each data 
  * type provided in our protocol implementation. These functions ensure that the sent 
@@ -159,6 +170,8 @@ void sendUpdateType(int sock_fd, UpdateType updateType);
 UpdateType receiveUpdateType(int sock_fd);
 void sendReplicaData(int sock_fd, ReplicaData replicaData);
 ReplicaData receiveReplicaData(int sock_fd);
+void sendBallot(int sock_fd, Ballot ballot);
+Ballot receiveBallot(int sock_fd);
 
 /* =========== LOW-LEVEL API ============= */
 /* This is the low-level API of our protocol, dealing directly with sending and receiving 
