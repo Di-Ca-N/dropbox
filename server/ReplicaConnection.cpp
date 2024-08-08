@@ -67,15 +67,14 @@ void ReplicaConnection::initializeReplicaManager(int &socketDescr, ReplicaManage
     int numReplicas = 0;
 
     numReplicas = receiveNumFiles(socketDescr);
-    std::cout << numReplicas << std::endl;
     sendOk(socketDescr);
-    replicaManager = new ReplicaManager();
-
+    
     for(int i = 0; i < numReplicas; i++) {
         replicaData = receiveReplicaData(socketDescr);
         replicaManager->pushReplica(replicaData.replicaId, replicaData.replicaIp, replicaData.socketDescr);
     }
 
+    std::cout << "initializeReplicaManager" << std::endl;
     replicaManager->printReplicas();
 }
 

@@ -117,7 +117,7 @@ typedef struct {
     };
 } AuthData;
 
-enum class UpdateType : uint8_t { UPDATE_CONNECTION, UPDATE_FILE_OP };
+enum class UpdateType : uint8_t { UPDATE_CONNECTION, UPDATE_FILE_OP, UPDATE_CONNECTION_START };
 
 typedef struct {
     int replicaId;

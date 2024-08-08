@@ -84,7 +84,7 @@ void handleClient(int clientSocket, AuthData authData) {
 
         Device device = userDeviceManager->getDevice(clientData.deviceId);
 
-            while (true) {
+        while (true) {
             Message msg = receiveMessage(clientSocket);
 
             switch(msg.type) {
@@ -113,7 +113,6 @@ void handleClient(int clientSocket, AuthData authData) {
                     sendError(clientSocket, "Unrecognized command");
                     break;
             }
-        }
         }
     } catch (BrokenPipe) {
         std::cout << "User " << username << " disconnected from device " << clientData.deviceId << "\n";
@@ -192,6 +191,7 @@ int main(int argc, char *argv[]) {
         int deviceId = std::stoi(argv[4]);
         
         replicaConnectionPtr = std::make_shared<ReplicaConnection>(ReplicaConnection(deviceId));
+        replicaManager = new ReplicaManager();
         if (!replicaConnectionPtr->setConnection(argv[2], port, replicaManager)) return 1;
     }
 

@@ -18,7 +18,8 @@ class ReplicaManager {
     public: 
         void pushReplica(int replicaId, uint32_t replicaIp, int socketDescr);
         void popReplica(int replica);
-        void updateReplica(int replicaId, uint32_t replicaIp, int socketDescr);
-        void sendReplica(int &socketDescr);
+        void updateReplica(int &socketDescr, int replicaId);
+        void sendAllReplicas(int &socketDescr);
+        void sendNewReplica(int socketDescr, int replicaId);
         void printReplicas() const;
 };

@@ -3,12 +3,17 @@
 #include <unistd.h>
 #include "ReplicaThread.hpp"
 
-void ReplicaThread::getServerUpdates(int socketDescr) {
+void ReplicaThread::getServerUpdates(int socketDescr, ReplicaManager* replicaManager) {
    while (true) {
         UpdateType updateType = receiveUpdateType(socketDescr);
         
         switch (updateType) {
             case UpdateType::UPDATE_CONNECTION:
+                getNewReplica(socketDescr, replicaManager);
+                break;
+            case UpdateType::UPDATE_FILE_OP:
+                break;
+            case UpdateType::UPDATE_CONNECTION_START:
                 sendOk(socketDescr);
                 break;
             default:
@@ -19,9 +24,17 @@ void ReplicaThread::getServerUpdates(int socketDescr) {
     close(socketDescr);
 }
 
+void ReplicaThread::getNewReplica(int socketDescr, ReplicaManager* replicaManager) {
+    sendOk(socketDescr);
+    replicaData = receiveReplicaData(socketDescr);
+    replicaManager->pushReplica(replicaData.replicaId, replicaData.replicaIp, replicaData.socketDescr);
+    std::cout << "getNewReplica" << std::endl;
+    replicaManager->printReplicas();
+
+}
+
 void ReplicaThread::run(int &socketDescr, ReplicaManager* replicaManager) {
-    // Start the thread to get server updates
-    replicaThread = std::thread(&ReplicaThread::getServerUpdates, this, socketDescr);
+    replicaThread = std::thread(&ReplicaThread::getServerUpdates, this, socketDescr, replicaManager);
 }
 
 
