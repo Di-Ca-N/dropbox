@@ -13,6 +13,7 @@ ReplicaConnection::ReplicaConnection(int replicaId) {
 bool ReplicaConnection::setConnection(std::string ip, int port, ReplicaManager* replicaManager) {
     createSocket(this->replicaSock, ip, port);
     if(!replicaAuth(this->replicaSock, replicaId)) return false;
+    if(!createUpdateType(this->replicaSock)) return false;
     initializeReplicaManager(this->replicaSock, replicaManager);
     runReplicaThread(this->replicaSock, replicaManager);
 
@@ -55,6 +56,23 @@ bool ReplicaConnection::replicaAuth(int &socketDescr, int replicaId) {
     }
 
     return true;
+}
+
+bool ReplicaConnection::createUpdateType(int &socketDescr) {
+
+    try {
+        sendUpdateType(socketDescr, UpdateType::UPDATE_CONNECTION_START);
+        waitConfirmation(socketDescr);
+        return true;
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response.\n";
+        return false;
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+        return false;
+    } catch (BrokenPipe) {
+        return false;
+    }
 }
 
 void ReplicaConnection::runReplicaThread(int &socketDescr, ReplicaManager* replicaManager) {

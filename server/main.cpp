@@ -17,6 +17,7 @@
 #include "handlers/SyncServerToClientHandler.hpp"
 #include "handlers/SyncClientToServerHandler.hpp"
 #include "handlers/HeartBeatHandler.hpp"
+#include "handlers/ReplicaConnectionHandler.hpp"
 #include "DeviceManager.hpp"
 #include "ReplicaConnection.hpp"
 #include "ReplicaManager.hpp"
@@ -112,28 +113,27 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
     authData.replicaData = replicaData;
 
     std::cout << authData.replicaData.ipAddress << std::endl;
-
-    if (replicaManager == nullptr) {
-        replicaManager = new ReplicaManager();
-    }
             
-    replicaManager->pushReplica(replicaData.replicaId, replicaData.ipAddress, replicaSocket);
     try {
         sendAuth(replicaSocket, authData);
-        replicaManager->sendAllReplicas(replicaSocket);
-        replicaManager->updateReplica(replicaSocket, replicaData.replicaId);
-        std::cout << "Primary pushReplica" << std::endl;
-        replicaManager->printReplicas();
-
-        return;
-
+        
         Message msg = receiveMessage(replicaSocket);
 
         switch (msg.type) {
             case MsgType::MSG_HEARTBEAT:
                 HeartBeatHandler(replicaSocket).run();
                 break;
-            
+            case MsgType::MSG_UPDATE_TYPE:
+                if(replicaManager == nullptr) {
+                    replicaManager = new ReplicaManager();
+                }
+                sendOk(replicaSocket);
+                replicaManager->pushReplica(replicaData.replicaId, replicaData.ipAddress, replicaSocket);
+                replicaManager->sendAllReplicas(replicaSocket);
+                replicaManager->updateReplica(replicaSocket, replicaData.replicaId);
+                std::cout << "Primary pushReplica" << std::endl;
+                replicaManager->printReplicas();
+                break;
             default:
                 break;
         }
