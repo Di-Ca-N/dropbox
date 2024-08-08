@@ -27,24 +27,7 @@
 std::map<std::string, DeviceManager*> deviceManagers;
 std::mutex userRegisterMutex;
 std::shared_ptr<ReplicaConnection> replicaConnectionPtr;
-
-void handleConnection(int remoteSocket, sockaddr_in remoteAddr) {
-    try {
-        AuthData authData = receiveAuth(remoteSocket);
-
-        switch (authData.type) {
-            case AuthType::AUTH_CLIENT:
-                handleClient(remoteSocket, authData);
-                break;
-            case AuthType::AUTH_REPLICA:
-                handleReplica(remoteSocket, remoteAddr, authData);
-                break;
-        }
-    } catch (BrokenPipe) {
-
-    }
-    close(remoteSocket);
-}
+ReplicaManager *replicaManager = nullptr;
 
 void handleClient(int clientSocket, AuthData authData) {
     ClientAuthData clientData = authData.clientData; 
@@ -129,8 +112,20 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
     authData.replicaData = replicaData;
 
     std::cout << authData.replicaData.ipAddress << std::endl;
+
+    if (replicaManager == nullptr) {
+        replicaManager = new ReplicaManager();
+    }
+            
+    replicaManager->pushReplica(replicaData.replicaId, replicaData.ipAddress, replicaSocket);
     try {
         sendAuth(replicaSocket, authData);
+        replicaManager->sendAllReplicas(replicaSocket);
+        replicaManager->updateReplica(replicaSocket, replicaData.replicaId);
+        std::cout << "Primary pushReplica" << std::endl;
+        replicaManager->printReplicas();
+
+        return;
 
         Message msg = receiveMessage(replicaSocket);
 
@@ -147,6 +142,25 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
         inet_ntop(AF_INET, &replicaData.ipAddress, ipString, 16);
         std::cout << "Lost connection to replica " << ipString << "\n";
     }
+}
+
+
+void handleConnection(int remoteSocket, sockaddr_in remoteAddr) {
+    try {
+        AuthData authData = receiveAuth(remoteSocket);
+
+        switch (authData.type) {
+            case AuthType::AUTH_CLIENT:
+                handleClient(remoteSocket, authData);
+                break;
+            case AuthType::AUTH_REPLICA:
+                handleReplica(remoteSocket, remoteAddr, authData);
+                return;
+        }
+    } catch (BrokenPipe) {
+
+    }
+    close(remoteSocket);
 }
 
 int main(int argc, char *argv[]) {
