@@ -166,6 +166,7 @@ void sendServerAddress(int sock_fd, ServerAddress address);
 ServerAddress receiveServerAddress(int sock_fd);
 void sendHeartbeat(int sock_fd);
 void waitHeartbeat(int sock_fd, int maxTimeout);
+void sendUpdate(int sock_fd);
 void sendUpdateType(int sock_fd, UpdateType updateType);
 UpdateType receiveUpdateType(int sock_fd);
 void sendReplicaData(int sock_fd, ReplicaData replicaData);

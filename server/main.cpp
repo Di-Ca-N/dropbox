@@ -20,6 +20,7 @@
 #include "handlers/HeartBeatHandler.hpp"
 #include "handlers/ElectionHandler.hpp"
 #include "handlers/ElectedHandler.hpp"
+#include "handlers/ReplicaConnectionHandler.hpp"
 #include "DeviceManager.hpp"
 #include "ReplicaConnection.hpp"
 #include "ReplicaManager.hpp"
@@ -127,11 +128,18 @@ void handleClient(int clientSocket, AuthData authData) {
 void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData) {
     std::cout << "Replica connected\n";
     ReplicaAuthData replicaData = authData.replicaData;
+
+    if(replicaManager == nullptr) {
+        replicaManager = new ReplicaManager();
+    }
     
     replicaData.ipAddress = replicaAddr.sin_addr.s_addr;
     replicaData.replicaId = authData.replicaData.replicaId;
     authData.replicaData = replicaData;
 
+
+    std::cout << authData.replicaData.ipAddress << std::endl;
+            
     try {
         sendAuth(replicaSocket, authData);
 
@@ -140,6 +148,9 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
         switch (msg.type) {
             case MsgType::MSG_HEARTBEAT:
                 HeartBeatHandler(replicaSocket).run();
+                break;
+            case MsgType::MSG_UPDATE_TYPE:
+                ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.ipAddress, replicaManager).run();
                 break;
 
             case MsgType::MSG_ELECTION:

@@ -17,6 +17,7 @@ class ReplicaConnection {
         bool replicaAuth(int &socketDescr, int replicaId);
         void runReplicaThread(int &socketDescr, ReplicaManager* replicaManager);
         void initializeReplicaManager(int &socketDescr, ReplicaManager* replicaManager);
+        bool createUpdateType(int &socketDescr);
 
     public:
         ReplicaConnection(int replicaId);
