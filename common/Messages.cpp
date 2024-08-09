@@ -25,6 +25,9 @@ std::map<MsgType, std::string> msgTypeNames = {
     {MsgType::MSG_SERVICE_STATUS, "MSG_SERVICE_STATUS"},
     {MsgType::MSG_SERVER_ADDRESS, "MSG_SERVER_ADDRESS"},
     {MsgType::MSG_HEARTBEAT, "MSG_HEARTBEAT"},
+    {MsgType::MSG_REPLICA_DATA, "MSG_REPLICA_DATA"},
+    {MsgType::MSG_REPLICA_ID, "MSG_REPLICA_ID"},
+    {MsgType::MSG_UPDATE_TYPE, "MSG_UPDATE_TYPE"},
 };
 
 std::string toString(MsgType type) { return msgTypeNames[type]; }
@@ -247,5 +250,13 @@ void sendReplicaData(int sock_fd, ReplicaData replicaData) {
 
 ReplicaData receiveReplicaData(int sock_fd) {
     return receivePayload<ReplicaData>(sock_fd, MsgType::MSG_REPLICA_DATA);
+}
+
+void sendReplicaId(int sock_fd, int replicaId) {
+    sendMessage(sock_fd, MsgType::MSG_REPLICA_ID, &replicaId, sizeof(replicaId));
+}
+
+int receiveReplicaId(int sock_fd) {
+    return receivePayload<int>(sock_fd, MsgType::MSG_REPLICA_ID);
 }
 

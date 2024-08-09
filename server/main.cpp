@@ -137,7 +137,7 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
         char ipString[16];
         inet_ntop(AF_INET, &replicaData.ipAddress, ipString, 16);
         replicaManager->popReplica(replicaData.replicaId);
-        replicaManager->updateReplica(replicaData.replicaId, UpdateType::UPDATE_CONNECTION_END);
+        replicaManager->removeReplica(replicaData.replicaId, UpdateType::UPDATE_CONNECTION_END);
         std::cout << "Lost connection to replica " << ipString << "\n";
         replicaManager->printReplicas();
     }

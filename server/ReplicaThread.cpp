@@ -13,9 +13,6 @@ void ReplicaThread::getServerUpdates(int socketDescr, ReplicaManager* replicaMan
                 break;
             case UpdateType::UPDATE_FILE_OP:
                 break;
-            case UpdateType::UPDATE_CONNECTION_EQUAL:
-                sendOk(socketDescr);
-                break;
             case UpdateType::UPDATE_CONNECTION_END:
                 removeReplica(socketDescr, replicaManager);
                 break;
@@ -44,10 +41,12 @@ void ReplicaThread::getNewReplica(int socketDescr, ReplicaManager* replicaManage
 }
 
 void ReplicaThread::removeReplica(int socketDescr, ReplicaManager* replicaManager) {
+    int replicaId;
+
     try {
-        replicaData = receiveReplicaData(socketDescr);
-        replicaManager->popReplica(replicaData.replicaId);
-        std::cout << replicaData.replicaId << std::endl;
+        replicaId = receiveReplicaId(socketDescr);
+        replicaManager->popReplica(replicaId);
+        std::cout << replicaId << std::endl;
         std::cout << "removeReplica" << std::endl;
         replicaManager->printReplicas();
     } catch (UnexpectedMsgType) {

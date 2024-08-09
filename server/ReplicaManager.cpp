@@ -6,7 +6,9 @@ void ReplicaManager::pushReplica(int replicaId, uint32_t replicaIp, int socketDe
 }
 
 void ReplicaManager::popReplica(int replicaId) {
-   replicas.erase(replicaId);
+    if(replicas.find(replicaId) != replicas.end()) {
+         replicas.erase(replicaId);
+    }
 }
 
 
@@ -27,19 +29,45 @@ void ReplicaManager::updateReplica(int replicaId, UpdateType updateType) {
             return;
         }
     }
-    std::cout << std::endl;
+}
+
+void ReplicaManager::removeReplica(int replicaId, UpdateType updateType) {
+    for (const auto& pair : replicas) {
+        const Replica& replica = pair.second;
+        try {
+            if(replicaId != replica.replicaId) {
+                sendUpdateType(replica.socketDescr, updateType);
+                sendReplicaId(replica.socketDescr, replicaId);
+            }
+           
+        } catch (UnexpectedMsgType) {
+            std::cout << "Unexpected response.\n";
+            return;
+        } catch (ErrorReply e) {
+            std::cout << "Error: " << e.what() << "\n";
+            return;
+        }
+    }
 }
 
 void ReplicaManager::sendReplica(int socketDescr, int replicaId) {
-    if (replicas.find(replicaId) != replicas.end()) {
-        replicaData.replicaId = replicaId;
-        replicaData.replicaIp = replicas[replicaId].replicaIp;
-        replicaData.socketDescr = replicas[replicaId].socketDescr;
-    }
+  
+    replicaData.replicaId = replicaId;
+    replicaData.replicaIp = replicas[replicaId].replicaIp;        
+    replicaData.socketDescr = replicas[replicaId].socketDescr;
     
-    sendReplicaData(socketDescr, replicaData);
+    try {
+        sendReplicaData(socketDescr, replicaData);
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response.\n";
+        return;
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+        return;
+    }
 
 }
+
 
 void ReplicaManager::sendAllReplicas(int &socketDescr) {
     try {

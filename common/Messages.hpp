@@ -33,6 +33,7 @@ enum class MsgType : u_int8_t {
     MSG_HEARTBEAT,
     MSG_UPDATE_TYPE,
     MSG_REPLICA_DATA,
+    MSG_REPLICA_ID,
     MSG_OK,
     MSG_ERROR
 };
@@ -117,7 +118,7 @@ typedef struct {
     };
 } AuthData;
 
-enum class UpdateType : uint8_t { UPDATE_CONNECTION, UPDATE_FILE_OP, UPDATE_CONNECTION_START, UPDATE_CONNECTION_END, UPDATE_CONNECTION_EQUAL };
+enum class UpdateType : uint8_t { UPDATE_CONNECTION, UPDATE_FILE_OP, UPDATE_CONNECTION_START, UPDATE_CONNECTION_END };
 
 typedef struct {
     int replicaId;
@@ -160,6 +161,8 @@ void sendUpdateType(int sock_fd, UpdateType updateType);
 UpdateType receiveUpdateType(int sock_fd);
 void sendReplicaData(int sock_fd, ReplicaData replicaData);
 ReplicaData receiveReplicaData(int sock_fd);
+void sendReplicaId(int sock_fd, int replicaId);
+int receiveReplicaId(int sock_fd);
 
 /* =========== LOW-LEVEL API ============= */
 /* This is the low-level API of our protocol, dealing directly with sending and receiving 
