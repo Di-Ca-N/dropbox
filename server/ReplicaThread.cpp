@@ -4,22 +4,25 @@
 #include "ReplicaThread.hpp"
 
 void ReplicaThread::getServerUpdates(int socketDescr, ReplicaManager* replicaManager) {
-   while (true) {
-        UpdateType updateType = receiveUpdateType(socketDescr);
-        
-        switch (updateType) {
-            case UpdateType::UPDATE_CONNECTION:
-                getNewReplica(socketDescr, replicaManager);
-                break;
-            case UpdateType::UPDATE_FILE_OP:
-                break;
-            case UpdateType::UPDATE_CONNECTION_END:
-                removeReplica(socketDescr, replicaManager);
-                break;
-            default:
-                break;
+    try {
+        while (true) {
+            UpdateType updateType = receiveUpdateType(socketDescr);
+            
+            switch (updateType) {
+                case UpdateType::UPDATE_CONNECTION:
+                    getNewReplica(socketDescr, replicaManager);
+                    break;
+                case UpdateType::UPDATE_FILE_OP:
+                    break;
+                case UpdateType::UPDATE_CONNECTION_END:
+                    removeReplica(socketDescr, replicaManager);
+                    break;
+                default:
+                    break;
+            }
         }
-
+    } catch (BrokenPipe) {
+        std::cout << "Connection closed.\n";
     }
     close(socketDescr);
 }

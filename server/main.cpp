@@ -315,6 +315,10 @@ int main(int argc, char *argv[]) {
 
         std::cout << "Starting election monitor\n";
         std::thread(electionMonitor, primaryAddr).detach();
+
+        replicaConnectionPtr = std::make_shared<ReplicaConnection>(ReplicaConnection(myId));
+        replicaManager = std::make_unique<ReplicaManager>();
+        if (!replicaConnectionPtr->setConnection(argv[2], atoi(argv[3]), replicaManager.get())) return 1;
     }
  
     std::cout << "Server listening on port " << argv[1] << "\n";
