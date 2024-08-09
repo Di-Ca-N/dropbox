@@ -27,8 +27,8 @@
 
 std::map<std::string, DeviceManager*> deviceManagers;
 std::mutex userRegisterMutex;
-std::shared_ptr<ReplicaConnection> replicaConnectionPtr;
-ReplicaManager *replicaManager = nullptr;
+std::shared_ptr<ReplicaConnection> replicaConnectionPtr = nullptr;
+std::unique_ptr<ReplicaManager> replicaManager = nullptr;
 
 void handleClient(int clientSocket, AuthData authData) {
     ClientAuthData clientData = authData.clientData; 
@@ -109,35 +109,37 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
     ReplicaAuthData replicaData = authData.replicaData;
 
     if(replicaManager == nullptr) {
-        replicaManager = new ReplicaManager();
+        replicaManager = std::make_unique<ReplicaManager>();
     }
     
     replicaData.ipAddress = replicaAddr.sin_addr.s_addr;
     replicaData.replicaId = authData.replicaData.replicaId;
     authData.replicaData = replicaData;
 
-
-    std::cout << authData.replicaData.ipAddress << std::endl;
-            
     try {
         sendAuth(replicaSocket, authData);
         
-        Message msg = receiveMessage(replicaSocket);
+        while (true) {
+            Message msg = receiveMessage(replicaSocket);
 
-        switch (msg.type) {
-            case MsgType::MSG_HEARTBEAT:
-                HeartBeatHandler(replicaSocket).run();
-                break;
-            case MsgType::MSG_UPDATE_TYPE:
-                ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.ipAddress, replicaManager).run();
-                break;
-            default:
-                break;
+            switch (msg.type) {
+                case MsgType::MSG_HEARTBEAT:
+                    HeartBeatHandler(replicaSocket).run();
+                    break;
+                case MsgType::MSG_UPDATE_TYPE:
+                    ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.ipAddress, replicaManager.get()).run();
+                    break;
+                default:
+                    break;
+            }
         }
     } catch (BrokenPipe) {
         char ipString[16];
         inet_ntop(AF_INET, &replicaData.ipAddress, ipString, 16);
+        replicaManager->popReplica(replicaData.replicaId);
+        replicaManager->updateReplica(replicaData.replicaId, UpdateType::UPDATE_CONNECTION_END);
         std::cout << "Lost connection to replica " << ipString << "\n";
+        replicaManager->printReplicas();
     }
 }
 
@@ -202,8 +204,8 @@ int main(int argc, char *argv[]) {
         int deviceId = std::stoi(argv[4]);
         
         replicaConnectionPtr = std::make_shared<ReplicaConnection>(ReplicaConnection(deviceId));
-        replicaManager = new ReplicaManager();
-        if (!replicaConnectionPtr->setConnection(argv[2], port, replicaManager)) return 1;
+        replicaManager = std::make_unique<ReplicaManager>();
+        if (!replicaConnectionPtr->setConnection(argv[2], port, replicaManager.get())) return 1;
     }
 
  

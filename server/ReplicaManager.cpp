@@ -5,24 +5,20 @@ void ReplicaManager::pushReplica(int replicaId, uint32_t replicaIp, int socketDe
     replicas[replicaId] = {replicaId, replicaIp, socketDescr};
 }
 
-void ReplicaManager::popReplica(int deviceId) {
-    replicas.erase(deviceId);
+void ReplicaManager::popReplica(int replicaId) {
+   replicas.erase(replicaId);
 }
 
 
-void ReplicaManager::updateReplica(int &socketDescr, int replicaId) {
+void ReplicaManager::updateReplica(int replicaId, UpdateType updateType) {
     for (const auto& pair : replicas) {
+        const Replica& replica = pair.second;
         try {
-            const Replica& replica = pair.second;
-            if(replica.replicaId != replicaId) {
-                sendUpdateType(replica.socketDescr, UpdateType::UPDATE_CONNECTION);
-                waitConfirmation(replica.socketDescr);
-                sendNewReplica(replica.socketDescr, replicaId);
-            } else {
-                sendUpdateType(replica.socketDescr, UpdateType::UPDATE_CONNECTION_START);
-                waitConfirmation(replica.socketDescr);
+            if(replicaId != replica.replicaId) {
+                sendUpdateType(replica.socketDescr, updateType);
+                sendReplica(replica.socketDescr, replicaId);
             }
-            
+           
         } catch (UnexpectedMsgType) {
             std::cout << "Unexpected response.\n";
             return;
@@ -31,21 +27,21 @@ void ReplicaManager::updateReplica(int &socketDescr, int replicaId) {
             return;
         }
     }
+    std::cout << std::endl;
 }
 
-void ReplicaManager::sendNewReplica(int socketDescr, int replicaId) {
-    ReplicaData replicaData;
-
-    replicaData.replicaId = replicaId;
-    replicaData.replicaIp = replicas[replicaId].replicaIp;
-    replicaData.socketDescr = replicas[replicaId].socketDescr;
-
+void ReplicaManager::sendReplica(int socketDescr, int replicaId) {
+    if (replicas.find(replicaId) != replicas.end()) {
+        replicaData.replicaId = replicaId;
+        replicaData.replicaIp = replicas[replicaId].replicaIp;
+        replicaData.socketDescr = replicas[replicaId].socketDescr;
+    }
+    
     sendReplicaData(socketDescr, replicaData);
 
 }
 
 void ReplicaManager::sendAllReplicas(int &socketDescr) {
-    ReplicaData replicaData;
     try {
         sendNumFiles(socketDescr, replicas.size());
         waitConfirmation(socketDescr);

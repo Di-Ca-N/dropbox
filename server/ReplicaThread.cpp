@@ -13,8 +13,11 @@ void ReplicaThread::getServerUpdates(int socketDescr, ReplicaManager* replicaMan
                 break;
             case UpdateType::UPDATE_FILE_OP:
                 break;
-            case UpdateType::UPDATE_CONNECTION_START:
+            case UpdateType::UPDATE_CONNECTION_EQUAL:
                 sendOk(socketDescr);
+                break;
+            case UpdateType::UPDATE_CONNECTION_END:
+                removeReplica(socketDescr, replicaManager);
                 break;
             default:
                 break;
@@ -25,11 +28,35 @@ void ReplicaThread::getServerUpdates(int socketDescr, ReplicaManager* replicaMan
 }
 
 void ReplicaThread::getNewReplica(int socketDescr, ReplicaManager* replicaManager) {
-    sendOk(socketDescr);
-    replicaData = receiveReplicaData(socketDescr);
-    replicaManager->pushReplica(replicaData.replicaId, replicaData.replicaIp, replicaData.socketDescr);
-    std::cout << "getNewReplica" << std::endl;
-    replicaManager->printReplicas();
+    try {
+        replicaData = receiveReplicaData(socketDescr);
+        replicaManager->pushReplica(replicaData.replicaId, replicaData.replicaIp, replicaData.socketDescr);
+        std::cout << "getNewReplica" << std::endl;
+        replicaManager->printReplicas();
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response.\n";
+        return;
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+        return;
+    }
+
+}
+
+void ReplicaThread::removeReplica(int socketDescr, ReplicaManager* replicaManager) {
+    try {
+        replicaData = receiveReplicaData(socketDescr);
+        replicaManager->popReplica(replicaData.replicaId);
+        std::cout << replicaData.replicaId << std::endl;
+        std::cout << "removeReplica" << std::endl;
+        replicaManager->printReplicas();
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response.\n";
+        return;
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+        return;
+    }
 
 }
 

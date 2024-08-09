@@ -14,12 +14,13 @@ struct Replica {
 class ReplicaManager {
     private:
         std::map<int, Replica> replicas;
+        ReplicaData replicaData;
+        void sendReplica(int socketDescr, int replicaId);
     
     public: 
         void pushReplica(int replicaId, uint32_t replicaIp, int socketDescr);
-        void popReplica(int replica);
-        void updateReplica(int &socketDescr, int replicaId);
+        void popReplica(int replicaId);
+        void updateReplica(int replicaId, UpdateType updateType);
         void sendAllReplicas(int &socketDescr);
-        void sendNewReplica(int socketDescr, int replicaId);
         void printReplicas() const;
 };
