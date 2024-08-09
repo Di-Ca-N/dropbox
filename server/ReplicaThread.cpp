@@ -13,8 +13,8 @@ void ReplicaThread::getServerUpdates(int socketDescr, ReplicaManager* replicaMan
                 break;
             case UpdateType::UPDATE_FILE_OP:
                 break;
-            case UpdateType::UPDATE_CONNECTION_START:
-                sendOk(socketDescr);
+            case UpdateType::UPDATE_CONNECTION_END:
+                removeReplica(socketDescr, replicaManager);
                 break;
             default:
                 break;
@@ -25,11 +25,37 @@ void ReplicaThread::getServerUpdates(int socketDescr, ReplicaManager* replicaMan
 }
 
 void ReplicaThread::getNewReplica(int socketDescr, ReplicaManager* replicaManager) {
-    sendOk(socketDescr);
-    replicaData = receiveReplicaData(socketDescr);
-    replicaManager->pushReplica(replicaData.replicaId, replicaData.replicaIp, replicaData.socketDescr);
-    std::cout << "getNewReplica" << std::endl;
-    replicaManager->printReplicas();
+    try {
+        replicaData = receiveReplicaData(socketDescr);
+        replicaManager->pushReplica(replicaData.replicaId, replicaData.replicaIp, replicaData.socketDescr);
+        std::cout << "getNewReplica" << std::endl;
+        replicaManager->printReplicas();
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response.\n";
+        return;
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+        return;
+    }
+
+}
+
+void ReplicaThread::removeReplica(int socketDescr, ReplicaManager* replicaManager) {
+    int replicaId;
+
+    try {
+        replicaId = receiveReplicaId(socketDescr);
+        replicaManager->popReplica(replicaId);
+        std::cout << replicaId << std::endl;
+        std::cout << "removeReplica" << std::endl;
+        replicaManager->printReplicas();
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response.\n";
+        return;
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+        return;
+    }
 
 }
 

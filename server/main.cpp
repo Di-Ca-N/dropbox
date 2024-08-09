@@ -32,7 +32,7 @@
 std::map<std::string, DeviceManager*> deviceManagers;
 std::mutex userRegisterMutex;
 std::shared_ptr<ReplicaConnection> replicaConnectionPtr;
-ReplicaManager *replicaManager = nullptr;
+std::unique_ptr<ReplicaManager> replicaManager = nullptr;
 ElectionManager *electionManager;
 
 ServerAddress myAddress = {.ip=16777343};
@@ -47,6 +47,7 @@ ServerAddress findNextServerAddr(){
         }
     }
 }
+
 
 void handleClient(int clientSocket, AuthData authData) {
     ClientAuthData clientData = authData.clientData; 
@@ -127,7 +128,7 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
     ReplicaAuthData replicaData = authData.replicaData;
 
     if(replicaManager == nullptr) {
-        replicaManager = new ReplicaManager();
+        replicaManager = std::make_unique<ReplicaManager>();
     }
     
     replicaData.replicaAddr = {
@@ -137,35 +138,41 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
     replicaData.replicaId = authData.replicaData.replicaId;
     authData.replicaData = replicaData;
 
+
     std::cout << "Replica " << replicaData.replicaAddr << " connected\n";
-            
+   
     try {
         sendAuth(replicaSocket, authData);
+        
+        while (true) {
+            Message msg = receiveMessage(replicaSocket);
 
-        Message msg = receiveMessage(replicaSocket);
+            switch (msg.type) {
+                case MsgType::MSG_HEARTBEAT:
+                    HeartBeatHandler(replicaSocket).run();
+                    break;
+                case MsgType::MSG_UPDATE_TYPE:
+                    ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.replicaAddr.ip, replicaManager.get()).run();
+                    break;
+                case MsgType::MSG_ELECTION:
+                    ElectionHandler(replicaSocket, myAddress, myId, findNextServerAddr(), electionManager).run();
+                    break;
 
-        switch (msg.type) {
-            case MsgType::MSG_HEARTBEAT:
-                HeartBeatHandler(replicaSocket).run();
-                break;
-            case MsgType::MSG_UPDATE_TYPE:
-                ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.replicaAddr.ip, replicaManager).run();
-                break;
-
-            case MsgType::MSG_ELECTION:
-                ElectionHandler(replicaSocket, myAddress, myId, findNextServerAddr(), electionManager).run();
-                break;
-
-            case MsgType::MSG_ELECTED:
-                ElectedHandler(replicaSocket, myId, findNextServerAddr(), electionManager).run();
-                break;
-
-            default:
-                break;
+                case MsgType::MSG_ELECTED:
+                    ElectedHandler(replicaSocket, myId, findNextServerAddr(), electionManager).run();
+                    break;
+                default:
+                    break;
+            }
         }
     } catch (BrokenPipe) {
+        char ipString[16];
+        inet_ntop(AF_INET, &replicaData.replicaAddr.ip, ipString, 16);
+        replicaManager->popReplica(replicaData.replicaId);
+        replicaManager->removeReplica(replicaData.replicaId, UpdateType::UPDATE_CONNECTION_END);
+        std::cout << "Lost connection to replica " << ipString << "\n";
+        replicaManager->printReplicas();
 
-        std::cout << "Lost connection to replica " << replicaData.replicaAddr << "\n";
     }
 }
 

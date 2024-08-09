@@ -97,5 +97,7 @@ void ReplicaConnection::initializeReplicaManager(int &socketDescr, ReplicaManage
 
     std::cout << "initializeReplicaManager" << std::endl;
     replicaManager->printReplicas();
+
+    
 }
 

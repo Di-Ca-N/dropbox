@@ -5,24 +5,22 @@ void ReplicaManager::pushReplica(int replicaId, uint32_t replicaIp, int socketDe
     replicas[replicaId] = {replicaId, replicaIp, socketDescr};
 }
 
-void ReplicaManager::popReplica(int deviceId) {
-    replicas.erase(deviceId);
+void ReplicaManager::popReplica(int replicaId) {
+    if(replicas.find(replicaId) != replicas.end()) {
+         replicas.erase(replicaId);
+    }
 }
 
 
-void ReplicaManager::updateReplica(int &socketDescr, int replicaId) {
+void ReplicaManager::updateReplica(int replicaId, UpdateType updateType) {
     for (const auto& pair : replicas) {
+        const Replica& replica = pair.second;
         try {
-            const Replica& replica = pair.second;
-            if(replica.replicaId != replicaId) {
-                sendUpdateType(replica.socketDescr, UpdateType::UPDATE_CONNECTION);
-                waitConfirmation(replica.socketDescr);
-                sendNewReplica(replica.socketDescr, replicaId);
-            } else {
-                sendUpdateType(replica.socketDescr, UpdateType::UPDATE_CONNECTION_START);
-                waitConfirmation(replica.socketDescr);
+            if(replicaId != replica.replicaId) {
+                sendUpdateType(replica.socketDescr, updateType);
+                sendReplica(replica.socketDescr, replicaId);
             }
-            
+           
         } catch (UnexpectedMsgType) {
             std::cout << "Unexpected response.\n";
             return;
@@ -33,19 +31,45 @@ void ReplicaManager::updateReplica(int &socketDescr, int replicaId) {
     }
 }
 
-void ReplicaManager::sendNewReplica(int socketDescr, int replicaId) {
-    ReplicaData replicaData;
+void ReplicaManager::removeReplica(int replicaId, UpdateType updateType) {
+    for (const auto& pair : replicas) {
+        const Replica& replica = pair.second;
+        try {
+            if(replicaId != replica.replicaId) {
+                sendUpdateType(replica.socketDescr, updateType);
+                sendReplicaId(replica.socketDescr, replicaId);
+            }
+           
+        } catch (UnexpectedMsgType) {
+            std::cout << "Unexpected response.\n";
+            return;
+        } catch (ErrorReply e) {
+            std::cout << "Error: " << e.what() << "\n";
+            return;
+        }
+    }
+}
 
+void ReplicaManager::sendReplica(int socketDescr, int replicaId) {
+  
     replicaData.replicaId = replicaId;
-    replicaData.replicaIp = replicas[replicaId].replicaIp;
+    replicaData.replicaIp = replicas[replicaId].replicaIp;        
     replicaData.socketDescr = replicas[replicaId].socketDescr;
-
-    sendReplicaData(socketDescr, replicaData);
+    
+    try {
+        sendReplicaData(socketDescr, replicaData);
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response.\n";
+        return;
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+        return;
+    }
 
 }
 
+
 void ReplicaManager::sendAllReplicas(int &socketDescr) {
-    ReplicaData replicaData;
     try {
         sendNumFiles(socketDescr, replicas.size());
         waitConfirmation(socketDescr);

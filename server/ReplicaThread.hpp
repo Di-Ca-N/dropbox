@@ -11,6 +11,7 @@ private:
     std::thread replicaThread;
     void getServerUpdates(int socketDescr, ReplicaManager* replicaManager);
     void getNewReplica(int socketDescr, ReplicaManager* replicaManager);
+    void removeReplica(int socketDescr, ReplicaManager* replicaManager);
 
 public:
     void run(int &socketDescr, ReplicaManager* replicaManager);

@@ -8,7 +8,6 @@ ReplicaConnectionHandler::ReplicaConnectionHandler(int socketDescr, int replicaI
 void ReplicaConnectionHandler::run() {
     sendOk(replicaSock);
     UpdateType UpdateType = receiveUpdateType(replicaSock);
-    sendOk(replicaSock);
 
     switch(UpdateType) {
         case UpdateType::UPDATE_CONNECTION_START:
@@ -24,9 +23,9 @@ void ReplicaConnectionHandler::run() {
 }
 
 void ReplicaConnectionHandler:: UpdateConnectionStart() {
+    sendOk(replicaSock);
     replicaManager->pushReplica(replicaId, replicaIp, replicaSock);
     replicaManager->sendAllReplicas(replicaSock);
-    replicaManager->updateReplica(replicaSock, replicaId);
-    std::cout << "Primary pushReplica" << std::endl;
-    replicaManager->printReplicas();
+    replicaManager->updateReplica(replicaId, UpdateType::UPDATE_CONNECTION);
+    
 }

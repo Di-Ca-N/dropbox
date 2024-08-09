@@ -34,6 +34,7 @@ enum class MsgType : u_int8_t {
     MSG_REPLICA_SYNC,
     MSG_UPDATE_TYPE,
     MSG_REPLICA_DATA,
+    MSG_REPLICA_ID,
     MSG_ELECTION,
     MSG_ELECTED,
     MSG_BALLOT,
@@ -124,7 +125,7 @@ typedef struct {
     };
 } AuthData;
 
-enum class UpdateType : uint8_t { UPDATE_CONNECTION, UPDATE_FILE_OP, UPDATE_CONNECTION_START };
+enum class UpdateType : uint8_t { UPDATE_CONNECTION, UPDATE_FILE_OP, UPDATE_CONNECTION_START, UPDATE_CONNECTION_END };
 
 typedef struct {
     int replicaId;
@@ -172,8 +173,11 @@ void sendUpdateType(int sock_fd, UpdateType updateType);
 UpdateType receiveUpdateType(int sock_fd);
 void sendReplicaData(int sock_fd, ReplicaData replicaData);
 ReplicaData receiveReplicaData(int sock_fd);
+void sendReplicaId(int sock_fd, int replicaId);
+int receiveReplicaId(int sock_fd);
 void sendBallot(int sock_fd, Ballot ballot);
 Ballot receiveBallot(int sock_fd);
+
 
 /* =========== LOW-LEVEL API ============= */
 /* This is the low-level API of our protocol, dealing directly with sending and receiving 
