@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <string.h>
 #include <memory>
+#include <algorithm>
 
 #include "Messages.hpp"
 #include "handlers/UploadHandler.hpp"
@@ -17,18 +18,25 @@
 #include "handlers/SyncServerToClientHandler.hpp"
 #include "handlers/SyncClientToServerHandler.hpp"
 #include "handlers/HeartBeatHandler.hpp"
+#include "handlers/ElectionHandler.hpp"
+#include "handlers/ElectedHandler.hpp"
 #include "handlers/ReplicaConnectionHandler.hpp"
 #include "DeviceManager.hpp"
 #include "ReplicaConnection.hpp"
 #include "ReplicaManager.hpp"
-
+#include "ElectionManager.hpp"
+#include "utils.hpp"
 
 #define MAX_USER_DEVICES 2
 
 std::map<std::string, DeviceManager*> deviceManagers;
 std::mutex userRegisterMutex;
-std::shared_ptr<ReplicaConnection> replicaConnectionPtr = nullptr;
-std::unique_ptr<ReplicaManager> replicaManager = nullptr;
+ReplicaManager replicaManager;
+ElectionManager *electionManager;
+
+ServerAddress myAddress = {.ip=16777343};
+int myId;
+
 
 void handleClient(int clientSocket, AuthData authData) {
     ClientAuthData clientData = authData.clientData; 
@@ -107,15 +115,14 @@ void handleClient(int clientSocket, AuthData authData) {
 
 void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData) {
     ReplicaAuthData replicaData = authData.replicaData;
-
-    if(replicaManager == nullptr) {
-        replicaManager = std::make_unique<ReplicaManager>();
-    }
     
-    replicaData.ipAddress = replicaAddr.sin_addr.s_addr;
+    replicaData.replicaAddr = {
+        .ip=replicaAddr.sin_addr.s_addr,
+        .port=authData.replicaData.replicaAddr.port
+    };
     replicaData.replicaId = authData.replicaData.replicaId;
     authData.replicaData = replicaData;
-
+   
     try {
         sendAuth(replicaSocket, authData);
         
@@ -127,7 +134,14 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
                     HeartBeatHandler(replicaSocket).run();
                     break;
                 case MsgType::MSG_UPDATE_TYPE:
-                    ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.ipAddress, replicaManager.get()).run();
+                    ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.replicaAddr, &replicaManager).run();
+                    break;
+                case MsgType::MSG_ELECTION:
+                    ElectionHandler(replicaSocket, myAddress, myId, replicaManager.getNextReplica(myAddress), electionManager).run();
+                    break;
+
+                case MsgType::MSG_ELECTED:
+                    ElectedHandler(replicaSocket, myId, myAddress, &replicaManager, electionManager).run();
                     break;
                 default:
                     break;
@@ -135,14 +149,13 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
         }
     } catch (BrokenPipe) {
         char ipString[16];
-        inet_ntop(AF_INET, &replicaData.ipAddress, ipString, 16);
-        replicaManager->popReplica(replicaData.replicaId);
-        replicaManager->removeReplica(replicaData.replicaId, UpdateType::UPDATE_CONNECTION_END);
+        inet_ntop(AF_INET, &replicaData.replicaAddr.ip, ipString, 16);
+        replicaManager.popReplica(replicaData.replicaId);
+        replicaManager.removeReplica(replicaData.replicaId, UpdateType::UPDATE_CONNECTION_END);
         std::cout << "Lost connection to replica " << ipString << "\n";
-        replicaManager->printReplicas();
+        replicaManager.printReplicas();
     }
 }
-
 
 void handleConnection(int remoteSocket, sockaddr_in remoteAddr) {
     try {
@@ -160,6 +173,87 @@ void handleConnection(int remoteSocket, sockaddr_in remoteAddr) {
 
     }
     close(remoteSocket);
+}
+
+
+void startReplicationThread(ServerAddress primaryAddr){
+    ReplicaConnection connection(myId);
+    replicaManager = ReplicaManager();
+    connection.setConnection(primaryAddr, myAddress.port, &replicaManager);
+}
+
+void electionMonitor(ServerAddress primaryAddr) {
+    AuthData authData = {
+        .type=AuthType::AUTH_REPLICA,
+        .replicaData={
+            .replicaAddr=myAddress,
+            .replicaId=myId,
+        }
+    };
+
+    electionManager = new ElectionManager(0, primaryAddr);
+
+    while (electionManager->getLeader() != myId) {
+        try {
+            int primarySock = openSocketTo(electionManager->getLeaderAddress());
+            if (primarySock == -1) {
+                std::cout << "Cannot connect to primary server\n";
+                return;
+            }
+            sendAuth(primarySock, authData);
+            receiveAuth(primarySock);
+
+            sendMessage(primarySock, MsgType::MSG_HEARTBEAT, nullptr, 0);
+            waitConfirmation(primarySock);
+
+            while (true) {
+                waitHeartbeat(primarySock, 1000);
+            }
+        } catch (BrokenPipe) {
+            std::cout << "Primary died. Starting election.\n";
+
+            ServerAddress nextServerAddr = replicaManager.getNextReplica(myAddress);
+            std::cout << "Connecting to next replica " << nextServerAddr << "\n";
+            int nextServer = openSocketTo(nextServerAddr);
+            if (nextServer == -1) {
+                std::cout << "Cannot connect to next server on ring\n";
+                return;
+            }
+
+            try {
+                sendAuth(nextServer, authData);
+                receiveAuth(nextServer);
+
+                sendMessage(nextServer, MsgType::MSG_ELECTION, nullptr, 0);
+                waitConfirmation(nextServer);
+
+                Ballot ballot = {
+                    .address=myAddress,
+                    .id=myId
+                };
+                sendBallot(nextServer, ballot);
+                waitConfirmation(nextServer);
+            } catch (BrokenPipe) {
+                std::cout << "Caiu\n";
+            } catch (ErrorReply e) {
+                std::cout << e.what() << "\n";
+            } catch (UnexpectedMsgType e) {
+                std::cout << e.what() << "\n";
+            }
+        }
+        std::cout << "Waiting election finish\n";
+        electionManager->waitElectionEnd();
+
+        std::cout << "New leader set to " << electionManager->getLeaderAddress() << "\n";
+        // Wait for the election to end 
+        if (electionManager->getLeader() != myId) {
+            std::cout << "Connecting to the new leader\n";
+            startReplicationThread(electionManager->getLeaderAddress());
+        } else {
+            replicaManager = ReplicaManager();
+        }
+
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -200,20 +294,21 @@ int main(int argc, char *argv[]) {
     std::cout << "Server listening on port " << argv[1] << "\n";
 
     if (argc == 5) {
-        int port = std::stoi(argv[3]);
-        int deviceId = std::stoi(argv[4]);
-        
-        replicaConnectionPtr = std::make_shared<ReplicaConnection>(ReplicaConnection(deviceId));
-        replicaManager = std::make_unique<ReplicaManager>();
-        if (!replicaConnectionPtr->setConnection(argv[2], port, replicaManager.get())) return 1;
+        uint16_t port = htons(atoi(argv[3]));
+        myAddress.port = htons(atoi(argv[1]));
+        myId = std::stoi(argv[4]);
+        ServerAddress primaryAddr;
+        inet_pton(AF_INET, argv[2], &primaryAddr.ip);
+        primaryAddr.port = port;
+        startReplicationThread(primaryAddr);
+        std::thread(electionMonitor, primaryAddr).detach();
     }
-
- 
 
     std::vector<std::thread> openConnections;
     std::filesystem::path dataDir = std::filesystem::current_path() / "data";
     std::filesystem::create_directories(dataDir);
     std::filesystem::current_path(std::filesystem::current_path() / "data");
+
     int c = 0;
     while (true) {
         sockaddr_in clientAddr;

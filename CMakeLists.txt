@@ -23,11 +23,14 @@ add_executable(server
     server/handlers/SyncClientToServerHandler.cpp
     server/handlers/HeartBeatHandler.cpp
     server/handlers/ReplicaConnectionHandler.cpp
+    server/handlers/ElectionHandler.cpp
+    server/handlers/ElectedHandler.cpp
     server/SyncQueue.cpp
     server/DeviceManager.cpp
     server/ReplicaConnection.cpp
     server/ReplicaThread.cpp
     server/ReplicaManager.cpp
+    server/ElectionManager.cpp
     common/Messages.cpp
     common/utils.cpp
 )

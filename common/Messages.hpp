@@ -31,9 +31,13 @@ enum class MsgType : u_int8_t {
     MSG_SERVICE_STATUS,
     MSG_SERVER_ADDRESS,
     MSG_HEARTBEAT,
+    MSG_REPLICA_SYNC,
     MSG_UPDATE_TYPE,
     MSG_REPLICA_DATA,
     MSG_REPLICA_ID,
+    MSG_ELECTION,
+    MSG_ELECTED,
+    MSG_BALLOT,
     MSG_OK,
     MSG_ERROR
 };
@@ -87,6 +91,9 @@ typedef struct {
     in_port_t port;
 } ServerAddress;
 
+bool operator==(ServerAddress addr1, ServerAddress addr2);
+std::ostream& operator<<(std::ostream& os, const ServerAddress& addr);
+
 // === Authentication related data types ===
 
 // Indicates the source of the authentication request
@@ -103,7 +110,7 @@ typedef struct {
 // Contains data required for replica authentication. The field ipAddress may be empty
 // and the server will reply with the IP used for the connection.
 typedef struct {
-    uint32_t ipAddress;
+    ServerAddress replicaAddr;
     int replicaId;
 } ReplicaAuthData;
 
@@ -125,6 +132,11 @@ typedef struct {
     uint32_t replicaIp;
     int socketDescr;
 } ReplicaData;
+
+typedef struct {
+    ServerAddress address;
+    int id;
+} Ballot;
 
 /* =========== HIGH-LEVEL API ============= */
 /* This high-level API provide utility functions for sending and receiving each data 
@@ -163,6 +175,9 @@ void sendReplicaData(int sock_fd, ReplicaData replicaData);
 ReplicaData receiveReplicaData(int sock_fd);
 void sendReplicaId(int sock_fd, int replicaId);
 int receiveReplicaId(int sock_fd);
+void sendBallot(int sock_fd, Ballot ballot);
+Ballot receiveBallot(int sock_fd);
+
 
 /* =========== LOW-LEVEL API ============= */
 /* This is the low-level API of our protocol, dealing directly with sending and receiving 
