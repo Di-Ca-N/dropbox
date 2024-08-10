@@ -1,15 +1,30 @@
 #include <iostream>
+#include <stdexcept>
 #include <thread>
 #include <unistd.h>
 
-#define MAX_NUM 100
+int convertCharArrayToPort(char *array);
 
-void printSomething00();
-void printSomething01();
+void acceptClientConnections(int port);
+void acceptServerConnections(int port);
 
-int main() {
-    std::thread thread_A(printSomething00);
-    std::thread thread_B(printSomething01);
+int main(int argc, char *argv[]) {
+    if (argc != 3) {
+        std::cerr << "Usage: binding-agent <client-port> <server-port>\n";
+        return 1;
+    }
+
+    int clientPort, serverPort;
+    try {
+        clientPort = convertCharArrayToPort(argv[1]);
+        serverPort = convertCharArrayToPort(argv[2]);
+    } catch (std::invalid_argument) {
+        std::cerr << "Received invalid arguments\n";
+        return 1;
+    }
+
+    std::thread thread_A(acceptClientConnections, clientPort);
+    std::thread thread_B(acceptServerConnections, serverPort);
 
     thread_A.join();
     thread_B.join();
@@ -17,16 +32,21 @@ int main() {
     return 0;
 }
 
-void printSomething00() {
-    for (int i=0; i < MAX_NUM; i++) {
-        std::cout << "print 00 - " << i << "\n";
-        sleep(1);
-    }
+int convertCharArrayToPort(char *array) {
+    int port = atoi(array);
+
+    if (port == 0)
+        throw std::invalid_argument("Char array does not correspond to a valid port");
+
+    return port;
 }
 
-void printSomething01 () {
-    for (int i=0; i < MAX_NUM; i++) {
-        std::cout << "print 01 - " << i << "\n";
-        sleep(1);
-    }
+void acceptClientConnections(int port) {
+    // TODO
+    std::cout << "Client connections will be accepted through port " << port << "\n";
+}
+
+void acceptServerConnections(int port) {
+    // TODO
+    std::cout << "Server connections will be accepted through port " << port << "\n";
 }
