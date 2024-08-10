@@ -2,11 +2,14 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+#include <memory>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <unistd.h>
 
+#include "Messages.hpp"
+#include "ServerRegistry.hpp"
 #include "handlers/client-handler.hpp"
 #include "handlers/server-handler.hpp"
 
@@ -14,6 +17,8 @@ int convertCharArrayToPort(char *array);
 
 void acceptConnections(int port, void (*handler)(int));
 int createSocket(int port);
+
+ServerRegistry registry;
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -29,6 +34,8 @@ int main(int argc, char *argv[]) {
         std::cerr << "Received invalid arguments\n";
         return 1;
     }
+
+    registry.setLastServerAddress({0, 0});
 
     try {
         std::thread clientThread(acceptConnections, clientPort, handleClientConnection);
