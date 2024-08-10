@@ -84,15 +84,45 @@ typedef struct {
     in_port_t port;
 } ServerAddress;
 
-// Struct with the required data to perform authentication.
-// If the devices still does not have an Id, it must be set to 0.
+// === Authentication related data types ===
+
+// Indicates the source of the authentication request
+enum class AuthType : uint8_t { AUTH_CLIENT, AUTH_REPLICA };
+
+// Contains data required for client authentication. If the device still does not have 
+// an id, the field deviceId must be set to 0.
 typedef struct {
     char username[MAX_USERNAME];
     uint8_t usernameLen;
     int deviceId;
+} ClientAuthData;
+
+// Contains data required for replica authentication. The field ipAddress may be empty
+// and the server will reply with the IP used for the connection.
+typedef struct {
+    uint32_t ipAddress;
+    int replicaId;
+} ReplicaAuthData;
+
+// Struct with the required data to perform authentication. The field type
+// specifies whether the data is related to a client or to a replica. You only 
+// should access the fields related to the specified authentication type.
+typedef struct {
+    AuthType type;
+    union {
+       ClientAuthData clientData;
+       ReplicaAuthData replicaData;
+    };
 } AuthData;
 
 /* =========== HIGH-LEVEL API ============= */
+/* This high-level API provide utility functions for sending and receiving each data 
+ * type provided in our protocol implementation. These functions ensure that the sent 
+ * and received messages contain the expected types and handle the serialization and 
+ * deserialization of each data type. If this is not enough for your use-case, you may 
+ * fallback to the low-level API described below.
+ * */
+
 void sendOk(int sock_fd);
 void sendError(int sock_fd, std::string errorMsg);
 void waitConfirmation(int sock_fd);
@@ -117,6 +147,11 @@ void sendHeartbeat(int sock_fd);
 void waitHeartbeat(int sock_fd, int maxTimeout);
 
 /* =========== LOW-LEVEL API ============= */
+/* This is the low-level API of our protocol, dealing directly with sending and receiving 
+ * raw messages. This API only ensures the integrity of the received messages, and you must
+ * manually handle the serialization and deserialization of its payload.
+ * */
+
 Message receiveMessage(int sock_fd);
 void sendMessage(int sock_fd, MsgType type, const void* msgPayload,
                  u_int16_t payloadLen);
