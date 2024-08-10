@@ -1,15 +1,17 @@
 #include "Handler.hpp"
 #include "Messages.hpp"
 #include "../ElectionManager.hpp"
+#include "../ReplicaManager.hpp"
 
 
 class ElectedHandler : public Handler {
     private:
         int replicaSocket;
-        ServerAddress nextServerAddr;
+        ServerAddress myAddr;
         int id;
-        ElectionManager *manager;
+        ElectionManager *electionManager;
+        ReplicaManager *replicaManager;
     public:
-        ElectedHandler(int replicaSocket, int myId, ServerAddress nextServerAddr, ElectionManager *manager);
+        ElectedHandler(int replicaSocket, int myId, ServerAddress myAddr, ReplicaManager *replicaManager, ElectionManager *manager);
         void run();
 };

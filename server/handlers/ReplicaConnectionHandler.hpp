@@ -6,13 +6,13 @@
 class ReplicaConnectionHandler : public Handler  {
     private:
         int replicaId;
-        uint32_t replicaIp;
+        ServerAddress replicaAddr;
         int replicaSock;
         ReplicaManager* replicaManager;
 
         void UpdateConnectionStart();
     
     public:
-        ReplicaConnectionHandler(int socketDescr, int replicaId, uint32_t replicaIp, ReplicaManager* replicaManager);
+        ReplicaConnectionHandler(int socketDescr, int replicaId, ServerAddress replicaAddr, ReplicaManager* replicaManager);
         void run();
 };

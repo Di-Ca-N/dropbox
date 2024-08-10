@@ -1,7 +1,7 @@
 #include "ReplicaConnectionHandler.hpp"
 
-ReplicaConnectionHandler::ReplicaConnectionHandler(int socketDescr, int replicaId, uint32_t replicaIp, ReplicaManager* replicaManager)
-    : replicaId(replicaId), replicaIp(replicaIp), replicaSock(socketDescr), replicaManager(replicaManager) {
+ReplicaConnectionHandler::ReplicaConnectionHandler(int socketDescr, int replicaId, ServerAddress replicaAddr, ReplicaManager* replicaManager)
+    : replicaId(replicaId), replicaAddr(replicaAddr), replicaSock(socketDescr), replicaManager(replicaManager) {
 
 }
 
@@ -24,7 +24,7 @@ void ReplicaConnectionHandler::run() {
 
 void ReplicaConnectionHandler:: UpdateConnectionStart() {
     sendOk(replicaSock);
-    replicaManager->pushReplica(replicaId, replicaIp, replicaSock);
+    replicaManager->pushReplica(replicaId, replicaAddr, replicaSock);
     replicaManager->sendAllReplicas(replicaSock);
     replicaManager->updateReplica(replicaId, UpdateType::UPDATE_CONNECTION);
     

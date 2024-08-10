@@ -3,11 +3,12 @@
 #include "Messages.hpp"
 #include "utils.hpp"
 
-ElectedHandler::ElectedHandler(int replicaSocket, int myId, ServerAddress nextServerAddr, ElectionManager *manager) {
+ElectedHandler::ElectedHandler(int replicaSocket, int myId, ServerAddress myAddress, ReplicaManager *replicaManager, ElectionManager *manager) {
     this->replicaSocket = replicaSocket;
     this->id = myId;
-    this->nextServerAddr = nextServerAddr;
-    this->manager = manager;
+    this->replicaManager = replicaManager;
+    this->electionManager = manager;
+    this->myAddr = myAddress;
 }
 
 void ElectedHandler::run() {
@@ -16,10 +17,17 @@ void ElectedHandler::run() {
         Ballot ballot = receiveBallot(replicaSocket);
         std::cout << "Elected leader with id " << ballot.id << std::endl;
         sendOk(replicaSocket);
-        manager->setLeader(ballot.id, ballot.address);
-        manager->finishElection();
-        if (ballot.id == this->id) return;
 
+        if (ballot.id == electionManager->getLeader()) return;
+
+        electionManager->setLeader(ballot.id, ballot.address);
+        
+        if (ballot.id == this->id) {
+            electionManager->finishElection();
+            return;
+        }
+
+        ServerAddress nextServerAddr = replicaManager->getNextReplica(myAddr);
         int nextServer = openSocketTo(nextServerAddr);
         if (nextServer == -1) {
             std::cout << "Could not connect to next server on ring\n";
@@ -36,6 +44,8 @@ void ElectedHandler::run() {
 
         sendBallot(nextServer, ballot);
         waitConfirmation(nextServer);
+
+        electionManager->finishElection();
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType e) {

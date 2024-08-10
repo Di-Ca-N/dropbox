@@ -13,13 +13,13 @@ class ReplicaConnection {
         int replicaId;
         uint32_t replicaIpAddress;
 
-        void createSocket(int &socketDescr, std::string ip, int port);
-        bool replicaAuth(int &socketDescr, int replicaId);
+        void createSocket(int &socketDescr, ServerAddress primaryAddr);
+        bool replicaAuth(int &socketDescr, int replicaId, uint16_t port);
         void runReplicaThread(int &socketDescr, ReplicaManager* replicaManager);
         void initializeReplicaManager(int &socketDescr, ReplicaManager* replicaManager);
         bool createUpdateType(int &socketDescr);
 
     public:
         ReplicaConnection(int replicaId);
-        bool setConnection(std::string ip, int port, ReplicaManager* replicaManager);
+        bool setConnection(ServerAddress primaryAddr, int myPort, ReplicaManager* replicaManager);
 };

@@ -31,22 +31,11 @@
 
 std::map<std::string, DeviceManager*> deviceManagers;
 std::mutex userRegisterMutex;
-std::shared_ptr<ReplicaConnection> replicaConnectionPtr;
-std::unique_ptr<ReplicaManager> replicaManager = nullptr;
+ReplicaManager replicaManager;
 ElectionManager *electionManager;
 
 ServerAddress myAddress = {.ip=16777343};
-std::vector<ServerAddress> replicas;
 int myId;
-
-ServerAddress findNextServerAddr(){
-    for (int i = 0; i < replicas.size(); i++) {
-        if (replicas[i] == myAddress) {
-            int nextIdx = (i + 1) % replicas.size();
-            return replicas[nextIdx];
-        }
-    }
-}
 
 
 void handleClient(int clientSocket, AuthData authData) {
@@ -126,10 +115,6 @@ void handleClient(int clientSocket, AuthData authData) {
 
 void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData) {
     ReplicaAuthData replicaData = authData.replicaData;
-
-    if(replicaManager == nullptr) {
-        replicaManager = std::make_unique<ReplicaManager>();
-    }
     
     replicaData.replicaAddr = {
         .ip=replicaAddr.sin_addr.s_addr,
@@ -137,9 +122,6 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
     };
     replicaData.replicaId = authData.replicaData.replicaId;
     authData.replicaData = replicaData;
-
-
-    std::cout << "Replica " << replicaData.replicaAddr << " connected\n";
    
     try {
         sendAuth(replicaSocket, authData);
@@ -152,14 +134,14 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
                     HeartBeatHandler(replicaSocket).run();
                     break;
                 case MsgType::MSG_UPDATE_TYPE:
-                    ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.replicaAddr.ip, replicaManager.get()).run();
+                    ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.replicaAddr, &replicaManager).run();
                     break;
                 case MsgType::MSG_ELECTION:
-                    ElectionHandler(replicaSocket, myAddress, myId, findNextServerAddr(), electionManager).run();
+                    ElectionHandler(replicaSocket, myAddress, myId, replicaManager.getNextReplica(myAddress), electionManager).run();
                     break;
 
                 case MsgType::MSG_ELECTED:
-                    ElectedHandler(replicaSocket, myId, findNextServerAddr(), electionManager).run();
+                    ElectedHandler(replicaSocket, myId, myAddress, &replicaManager, electionManager).run();
                     break;
                 default:
                     break;
@@ -168,11 +150,10 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
     } catch (BrokenPipe) {
         char ipString[16];
         inet_ntop(AF_INET, &replicaData.replicaAddr.ip, ipString, 16);
-        replicaManager->popReplica(replicaData.replicaId);
-        replicaManager->removeReplica(replicaData.replicaId, UpdateType::UPDATE_CONNECTION_END);
+        replicaManager.popReplica(replicaData.replicaId);
+        replicaManager.removeReplica(replicaData.replicaId, UpdateType::UPDATE_CONNECTION_END);
         std::cout << "Lost connection to replica " << ipString << "\n";
-        replicaManager->printReplicas();
-
+        replicaManager.printReplicas();
     }
 }
 
@@ -194,6 +175,12 @@ void handleConnection(int remoteSocket, sockaddr_in remoteAddr) {
     close(remoteSocket);
 }
 
+
+void startReplicationThread(ServerAddress primaryAddr){
+    ReplicaConnection connection(myId);
+    replicaManager = ReplicaManager();
+    connection.setConnection(primaryAddr, myAddress.port, &replicaManager);
+}
 
 void electionMonitor(ServerAddress primaryAddr) {
     AuthData authData = {
@@ -225,7 +212,7 @@ void electionMonitor(ServerAddress primaryAddr) {
         } catch (BrokenPipe) {
             std::cout << "Primary died. Starting election.\n";
 
-            ServerAddress nextServerAddr = findNextServerAddr();
+            ServerAddress nextServerAddr = replicaManager.getNextReplica(myAddress);
             std::cout << "Connecting to next replica " << nextServerAddr << "\n";
             int nextServer = openSocketTo(nextServerAddr);
             if (nextServer == -1) {
@@ -234,7 +221,6 @@ void electionMonitor(ServerAddress primaryAddr) {
             }
 
             try {
-                electionManager->markParticipation();
                 sendAuth(nextServer, authData);
                 receiveAuth(nextServer);
 
@@ -257,10 +243,18 @@ void electionMonitor(ServerAddress primaryAddr) {
         }
         std::cout << "Waiting election finish\n";
         electionManager->waitElectionEnd();
+
+        std::cout << "New leader set to " << electionManager->getLeaderAddress() << "\n";
         // Wait for the election to end 
+        if (electionManager->getLeader() != myId) {
+            std::cout << "Connecting to the new leader\n";
+            startReplicationThread(electionManager->getLeaderAddress());
+        } else {
+            replicaManager = ReplicaManager();
+        }
+
     }
 }
-
 
 int main(int argc, char *argv[]) {
     if (argc != 2 && argc != 5) {
@@ -297,7 +291,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-        
+    std::cout << "Server listening on port " << argv[1] << "\n";
+
     if (argc == 5) {
         uint16_t port = htons(atoi(argv[3]));
         myAddress.port = htons(atoi(argv[1]));
@@ -305,23 +300,10 @@ int main(int argc, char *argv[]) {
         ServerAddress primaryAddr;
         inet_pton(AF_INET, argv[2], &primaryAddr.ip);
         primaryAddr.port = port;
-
-        std::cout << "My replica address: " << myAddress << "\n";
-        std::cout << "Connecting to primary " << primaryAddr << "\n";
-
-        // Hard coded for now...
-        replicas.push_back((ServerAddress){.ip=16777343, .port=htons(8001)});
-        replicas.push_back((ServerAddress){.ip=16777343, .port=htons(8002)});
-
-        std::cout << "Starting election monitor\n";
+        startReplicationThread(primaryAddr);
         std::thread(electionMonitor, primaryAddr).detach();
-
-        replicaConnectionPtr = std::make_shared<ReplicaConnection>(ReplicaConnection(myId));
-        replicaManager = std::make_unique<ReplicaManager>();
-        if (!replicaConnectionPtr->setConnection(argv[2], atoi(argv[3]), replicaManager.get())) return 1;
     }
- 
-    std::cout << "Server listening on port " << argv[1] << "\n";
+
     std::vector<std::thread> openConnections;
     std::filesystem::path dataDir = std::filesystem::current_path() / "data";
     std::filesystem::create_directories(dataDir);

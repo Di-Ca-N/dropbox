@@ -21,17 +21,15 @@ void ReplicaThread::getServerUpdates(int socketDescr, ReplicaManager* replicaMan
                     break;
             }
         }
-    } catch (BrokenPipe) {
-        std::cout << "Connection closed.\n";
-    }
+    } catch (BrokenPipe) {}
     close(socketDescr);
 }
 
 void ReplicaThread::getNewReplica(int socketDescr, ReplicaManager* replicaManager) {
     try {
         replicaData = receiveReplicaData(socketDescr);
-        replicaManager->pushReplica(replicaData.replicaId, replicaData.replicaIp, replicaData.socketDescr);
-        std::cout << "getNewReplica" << std::endl;
+        replicaManager->pushReplica(replicaData.replicaId, replicaData.replicaAddr, replicaData.socketDescr);
+        std::cout << "Updated replica list:" << std::endl;
         replicaManager->printReplicas();
     } catch (UnexpectedMsgType) {
         std::cout << "Unexpected response.\n";
@@ -40,7 +38,6 @@ void ReplicaThread::getNewReplica(int socketDescr, ReplicaManager* replicaManage
         std::cout << "Error: " << e.what() << "\n";
         return;
     }
-
 }
 
 void ReplicaThread::removeReplica(int socketDescr, ReplicaManager* replicaManager) {
@@ -68,7 +65,8 @@ void ReplicaThread::run(int &socketDescr, ReplicaManager* replicaManager) {
 
 
 ReplicaThread::~ReplicaThread() {
-    if (replicaThread.joinable()) {
-        replicaThread.join(); // Wait for the thread to finish before destroying the object
-    }
+    replicaThread.detach();
+    // if (replicaThread.joinable()) {
+    //     replicaThread.join(); // Wait for the thread to finish before destroying the object
+    // }
 }
