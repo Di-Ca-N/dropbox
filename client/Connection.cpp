@@ -45,14 +45,9 @@ void Connection::retryConnection() {
     try {
         sendMessage(binderSock, MsgType::MSG_STATUS_INQUIRY, nullptr, 0); 
         waitConfirmation(binderSock);
-        serviceStatus = receiveServiceStatus(binderSock);
-        sendOk(binderSock);
 
-        if (serviceStatus.status == ServiceStatusType::ONLINE) {
-            serverAddress = receiveServerAddress(binderSock); 
-            sendOk(binderSock);
-            connectToServer(serverAddress.ip, serverAddress.port);
-        }
+        serverAddress = receiveServerAddress(binderSock); 
+        sendOk(binderSock);
     } catch (BrokenPipe) {
         std::cout << "Connection with binder was broken\n";
     } catch (ErrorReply e) {
@@ -60,12 +55,13 @@ void Connection::retryConnection() {
     } catch (UnexpectedMsgType) {
         std::cout << "Unexpected response\n";
     }
+
+    connectToServer(serverAddress.ip, serverAddress.port);
 }
 
 void Connection::connectToServer(in_addr_t &ip, in_port_t &port) {
     try {
         heartbeatSock = createSocket(ip, port);
-        // TODO: informar conexão de heartbeat
 
         commandSock = createSocket(ip, port);
         authenticate(commandSock, username);
