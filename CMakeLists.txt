@@ -44,6 +44,8 @@ add_executable(client
 
 add_executable(binding-agent
     binding-agent/main.cpp
+    binding-agent/handlers/client-handler.cpp
+    binding-agent/handlers/server-handler.cpp
 )
 
 target_include_directories(server PUBLIC common)

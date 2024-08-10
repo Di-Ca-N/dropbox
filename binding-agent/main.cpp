@@ -1,12 +1,19 @@
 #include <iostream>
 #include <stdexcept>
 #include <thread>
+#include <vector>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <net/if.h>
 #include <unistd.h>
+
+#include "handlers/client-handler.hpp"
+#include "handlers/server-handler.hpp"
 
 int convertCharArrayToPort(char *array);
 
-void acceptClientConnections(int port);
-void acceptServerConnections(int port);
+void acceptConnections(int port, void (*handler)(int));
+int createSocket(int port);
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -23,13 +30,60 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    std::thread thread_A(acceptClientConnections, clientPort);
-    std::thread thread_B(acceptServerConnections, serverPort);
+    try {
+        std::thread clientThread(acceptConnections, clientPort, handleClientConnection);
+        std::thread serverThread(acceptConnections, serverPort, handleServerConnection);
 
-    thread_A.join();
-    thread_B.join();
+        clientThread.join();
+        serverThread.join();
+    } catch (std::runtime_error const &e) {
+        std::cerr << e.what();
+        return 1;
+    }
 
     return 0;
+}
+
+void acceptConnections(int port, void (*handler)(int)) {
+    int socketDescriptor = createSocket(port);
+    std::vector<std::thread> connections;
+
+    while (true) {
+        int remoteDescriptor = accept(socketDescriptor, nullptr, nullptr);
+        connections.push_back(std::thread(handler, remoteDescriptor));
+    }
+
+    for (auto &connection : connections) {
+        connection.join();
+    }
+}
+
+int createSocket(int port) {
+    int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (sock_fd == -1) {
+        throw std::runtime_error("Couldn't create socket\n");
+    }
+    int optVal = 1;
+    setsockopt(sock_fd, 1, SO_REUSEADDR, &optVal, sizeof(optVal));
+
+    sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = INADDR_ANY;
+    int err;
+    err = bind(sock_fd, (sockaddr*) &addr, sizeof(addr));
+
+    if (err == -1) {
+        throw std::runtime_error("Couldn't bind socket\n");
+    }
+
+    err = listen(sock_fd, 10);
+    if (err == -1) {
+        throw std::runtime_error("Couldn't make socket listen to port\n");
+    }
+
+    return sock_fd;
 }
 
 int convertCharArrayToPort(char *array) {
@@ -41,12 +95,3 @@ int convertCharArrayToPort(char *array) {
     return port;
 }
 
-void acceptClientConnections(int port) {
-    // TODO
-    std::cout << "Client connections will be accepted through port " << port << "\n";
-}
-
-void acceptServerConnections(int port) {
-    // TODO
-    std::cout << "Server connections will be accepted through port " << port << "\n";
-}
