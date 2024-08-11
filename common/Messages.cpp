@@ -279,3 +279,11 @@ int receiveReplicaId(int sock_fd) {
     return receivePayload<int>(sock_fd, MsgType::MSG_REPLICA_ID);
 }
 
+void sendDirName(int sock_fd, DirData dirName) {
+    sendMessage(sock_fd, MsgType::MSG_DIR_NAME, &dirName, sizeof(dirName));
+}
+
+DirData receiveDirName(int sock_fd) {
+    return receivePayload<DirData>(sock_fd, MsgType::MSG_DIR_NAME);
+}
+

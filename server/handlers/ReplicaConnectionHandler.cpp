@@ -34,4 +34,5 @@ void ReplicaConnectionHandler:: UpdateConnectionStart() {
     replicaManager->pushReplica(replicaId, replicaAddr, replicaSock);
     replicaManager->sendAllReplicas(replicaSock);
     replicaManager->updateReplica(replicaId, UpdateType::UPDATE_CONNECTION);
+    replicaManager->sendAllFiles(replicaSock);
 }

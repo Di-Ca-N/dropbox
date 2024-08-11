@@ -11,6 +11,7 @@
 #define MAX_PAYLOAD 512
 #define MAX_FILENAME 256
 #define MAX_USERNAME 256
+#define MAX_DIRNAME 256
 
 /* ====== DATA DEFINITIONS ====== */
 
@@ -38,6 +39,7 @@ enum class MsgType : u_int8_t {
     MSG_ELECTION,
     MSG_ELECTED,
     MSG_BALLOT,
+    MSG_DIR_NAME,
     MSG_OK,
     MSG_ERROR
 };
@@ -138,6 +140,11 @@ typedef struct {
     int id;
 } Ballot;
 
+typedef struct {
+    char dirName[MAX_DIRNAME];
+    uint8_t dirnameLen;
+} DirData;
+
 /* =========== HIGH-LEVEL API ============= */
 /* This high-level API provide utility functions for sending and receiving each data 
  * type provided in our protocol implementation. These functions ensure that the sent 
@@ -177,6 +184,8 @@ void sendReplicaId(int sock_fd, int replicaId);
 int receiveReplicaId(int sock_fd);
 void sendBallot(int sock_fd, Ballot ballot);
 Ballot receiveBallot(int sock_fd);
+void sendDirName(int sock_fd, DirData dirData);
+DirData receiveDirName(int sock_fd);
 
 
 /* =========== LOW-LEVEL API ============= */
