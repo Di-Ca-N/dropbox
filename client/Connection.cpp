@@ -183,7 +183,15 @@ void Connection::download(std::filesystem::path filepath) {
     sendOk(commandSock);
 
     std::ofstream file(filepath, std::ios::binary);
-    receiveFileData(commandSock, fileData.totalBlocks, file);
+
+    try {
+        receiveFileData(commandSock, fileData.totalBlocks, file);
+    } catch (const std::exception &e) {
+        file.close();
+        std::filesystem::remove(filepath);
+        throw e;
+    }
+
     sendOk(commandSock);
 }
 
