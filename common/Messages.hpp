@@ -129,7 +129,7 @@ enum class UpdateType : uint8_t { UPDATE_CONNECTION, UPDATE_FILE_OP, UPDATE_CONN
 
 typedef struct {
     int replicaId;
-    uint32_t replicaIp;
+    ServerAddress replicaAddr;
     int socketDescr;
 } ReplicaData;
 
