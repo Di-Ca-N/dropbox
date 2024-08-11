@@ -280,13 +280,7 @@ std::optional<FileOperation> Connection::syncRead() {
     if (pollStatus == -1) {
         std::cout << "Error while trying to poll server\n";
     } else if (pollStatus > 0) {
-        try {
-            operation = syncProcessRead();
-        } catch (ErrorReply e) {
-            std::cout << "Error: " << e.what() << "\n";
-        } catch (UnexpectedMsgType) {
-            std::cout << "Unexpected response\n";
-        }
+        operation = syncProcessRead();
     }
 
     return operation;
@@ -346,7 +340,14 @@ void Connection::syncReadChange(FileId &fileId) {
             filepath,
             std::ofstream::binary
     );
-    receiveFileData(readSock, fileId.totalBlocks, stream);
+
+    try {
+        receiveFileData(readSock, fileId.totalBlocks, stream);
+    } catch (const std::exception &e) {
+        stream.close();
+        throw e;
+    }
+
     stream.close();
     sendOk(readSock);
 }

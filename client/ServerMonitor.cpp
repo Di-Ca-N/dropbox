@@ -24,6 +24,12 @@ void ServerMonitor::run() {
     while (clientState->get() == AppState::STATE_ACTIVE) {
         try {
             operation = connection->syncRead();
+        } catch (ErrorReply e) {
+            std::cout << "Error: " << e.what() << "\n";
+            continue;
+        } catch (UnexpectedMsgType) {
+            std::cout << "Unexpected response\n";
+            continue;
         } catch (BrokenPipe) {
             continue;
         }
