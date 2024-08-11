@@ -16,13 +16,13 @@ void HeartbeatMonitor::run() {
         if (!connection->hearsHeartbeat(MAX_WAIT)) {
             try {
                 connection->retryConnection();
-            } catch (BrokenPipe) {
+            } catch (BinderConnectionError) {
                 std::cout << "Connection with binder was broken\n";
             } catch (ErrorReply e) {
                 std::cout << "Error: " << e.what() << "\n";
             } catch (UnexpectedMsgType) {
                 std::cout << "Unexpected response\n";
-            }
+            } catch (BrokenPipe) {}
         }
     }
 }
