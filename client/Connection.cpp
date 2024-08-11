@@ -184,8 +184,6 @@ void Connection::upload(std::filesystem::path filepath) {
 
         sendFileData(commandSock, fid.totalBlocks, file);
         waitConfirmation(commandSock);
-
-        std::cout << "Upload successful!\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {
@@ -211,8 +209,6 @@ void Connection::download(std::filesystem::path filepath) {
         std::ofstream file(filepath, std::ios::binary);
         receiveFileData(commandSock, fileData.totalBlocks, file);
         sendOk(commandSock);
-
-        std::cout << "Download successful\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {
@@ -233,8 +229,6 @@ void Connection::delete_(std::filesystem::path filepath) {
 
         sendFileId(commandSock, fid);
         waitConfirmation(commandSock);
-
-        std::cout << "File deleted successfully\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType) {

@@ -102,8 +102,10 @@ void CLI::parseCommand(bool &newLine) {
         command->execute();
     } catch (BrokenPipe) {
         std::cout << "Service is offline. Please, try again later.\n";
-    } catch (const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
     }
 }
 
