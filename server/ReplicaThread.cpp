@@ -95,12 +95,5 @@ void ReplicaThread::removeReplica(int socketDescr, ReplicaManager* replicaManage
 
 void ReplicaThread::run(ReplicaManager* replicaManager, int replicaId, uint16_t port, ServerAddress primaryAddr) {
     replicaThread = std::thread(&ReplicaThread::getServerUpdates, this, replicaManager, replicaId, port, primaryAddr);
-}
-
-
-ReplicaThread::~ReplicaThread() {
     replicaThread.detach();
-    // if (replicaThread.joinable()) {
-    //     replicaThread.join(); // Wait for the thread to finish before destroying the object
-    // }
 }
