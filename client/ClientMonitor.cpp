@@ -1,4 +1,5 @@
 #include <memory>
+#include <iostream>
 #include <fcntl.h>
 #include <sys/unistd.h>
 #include <cstring>
@@ -44,9 +45,11 @@ void ClientMonitor::run(std::string sync_dir) {
         try {
             sendOperationIfNotDuplicated(queue.front());
             queue.pop();
-        } catch (BrokenPipe) {
-            continue;
-        }
+        } catch (ErrorReply e) {
+            std::cout << "Error: " << e.what() << "\n";
+        } catch (UnexpectedMsgType) {
+            std::cout << "Unexpected response\n";
+        } catch (BrokenPipe) {}
     }
 
     close(inotifyFd);

@@ -5,6 +5,7 @@
 #include <vector>
 #include <filesystem>
 #include <optional>
+#include <stdexcept>
 
 #include "Messages.hpp"
 
@@ -47,6 +48,11 @@ public:
     std::vector<FileMeta> listServer();
     std::optional<FileOperation> syncRead();
     void syncWrite(FileOpType op, std::filesystem::path target);
+};
+
+class BinderConnectionError : public std::exception {
+public:
+    BinderConnectionError(){};
 };
 
 #endif

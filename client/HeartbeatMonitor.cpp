@@ -1,5 +1,7 @@
 #include "HeartbeatMonitor.hpp"
 
+#include <iostream>
+
 #define MAX_WAIT 1
 
 HeartbeatMonitor::HeartbeatMonitor(
@@ -12,7 +14,15 @@ HeartbeatMonitor::HeartbeatMonitor(
 void HeartbeatMonitor::run() {
     while (clientState->get() != AppState::STATE_CLOSING) {
         if (!connection->hearsHeartbeat(MAX_WAIT)) {
-            connection->retryConnection();
+            try {
+                connection->retryConnection();
+            } catch (BrokenPipe) {
+                std::cout << "Connection with binder was broken\n";
+            } catch (ErrorReply e) {
+                std::cout << "Error: " << e.what() << "\n";
+            } catch (UnexpectedMsgType) {
+                std::cout << "Unexpected response\n";
+            }
         }
     }
 }

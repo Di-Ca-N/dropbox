@@ -42,7 +42,16 @@ void CLI::run(std::string username, std::string ip, int port) {
 
 void CLI::makeConnection(std::string username, std::string ip, int port) {
     connection = std::make_shared<Connection>(Connection());
-    connection->connectToService(username, ip, port);
+    
+    while (true) {
+        try {
+            connection->connectToService(username, ip, port);
+        } catch (BinderConnectionError) {
+            continue;
+        } catch (...) {}
+
+        break;
+    }
 }
 
 void CLI::makeHistory() {
@@ -90,7 +99,15 @@ void CLI::initializeSyncDir() {
             std::weak_ptr(clientState),
             std::weak_ptr(connection)
     );
-    cmd.execute();
+    try {
+        cmd.execute();
+    } catch (BrokenPipe) {
+        std::cout << "Service is offline. Please, try again later.\n";
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
+    }
 }
 
 void CLI::parseCommand(bool &newLine) {
