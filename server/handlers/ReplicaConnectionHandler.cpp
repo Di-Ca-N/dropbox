@@ -6,19 +6,26 @@ ReplicaConnectionHandler::ReplicaConnectionHandler(int socketDescr, int replicaI
 }
 
 void ReplicaConnectionHandler::run() {
-    sendOk(replicaSock);
-    UpdateType UpdateType = receiveUpdateType(replicaSock);
+    try {
+        sendOk(replicaSock);
+        UpdateType UpdateType = receiveUpdateType(replicaSock);
 
-    switch(UpdateType) {
-        case UpdateType::UPDATE_CONNECTION_START:
-            UpdateConnectionStart();
-            break;
-        case UpdateType::UPDATE_CONNECTION:
-            break;
-        case UpdateType::UPDATE_FILE_OP:
-            break;
-        default:
-            break;
+        switch(UpdateType) {
+            case UpdateType::UPDATE_CONNECTION_START:
+                UpdateConnectionStart();
+                break;
+            case UpdateType::UPDATE_CONNECTION:
+                break;
+            case UpdateType::UPDATE_FILE_OP:
+                break;
+            default:
+                break;
+        }
+    } catch (BrokenPipe e) {
+        replicaManager->popReplica(replicaId);
+        replicaManager->removeReplica(replicaId, UpdateType::UPDATE_CONNECTION_END);
+        replicaManager->printReplicas();
+        throw e;
     }
 }
 
@@ -27,5 +34,4 @@ void ReplicaConnectionHandler:: UpdateConnectionStart() {
     replicaManager->pushReplica(replicaId, replicaAddr, replicaSock);
     replicaManager->sendAllReplicas(replicaSock);
     replicaManager->updateReplica(replicaId, UpdateType::UPDATE_CONNECTION);
-    
 }

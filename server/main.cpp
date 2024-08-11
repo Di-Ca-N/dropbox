@@ -148,12 +148,7 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
             }
         }
     } catch (BrokenPipe) {
-        char ipString[16];
-        inet_ntop(AF_INET, &replicaData.replicaAddr.ip, ipString, 16);
-        replicaManager.popReplica(replicaData.replicaId);
-        replicaManager.removeReplica(replicaData.replicaId, UpdateType::UPDATE_CONNECTION_END);
-        std::cout << "Lost connection to replica " << ipString << "\n";
-        replicaManager.printReplicas();
+        std::cout << "Server " << replicaData.replicaAddr << " disconnected\n";
     }
 }
 
