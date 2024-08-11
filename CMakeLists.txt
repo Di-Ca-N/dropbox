@@ -27,7 +27,6 @@ add_executable(server
     server/handlers/ElectedHandler.cpp
     server/SyncQueue.cpp
     server/DeviceManager.cpp
-    server/ReplicaConnection.cpp
     server/ReplicaThread.cpp
     server/ReplicaManager.cpp
     server/ElectionManager.cpp

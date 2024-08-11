@@ -22,7 +22,7 @@
 #include "handlers/ElectedHandler.hpp"
 #include "handlers/ReplicaConnectionHandler.hpp"
 #include "DeviceManager.hpp"
-#include "ReplicaConnection.hpp"
+#include "ReplicaThread.hpp"
 #include "ReplicaManager.hpp"
 #include "ElectionManager.hpp"
 #include "utils.hpp"
@@ -172,9 +172,9 @@ void handleConnection(int remoteSocket, sockaddr_in remoteAddr) {
 
 
 void startReplicationThread(ServerAddress primaryAddr){
-    ReplicaConnection connection(myId);
     replicaManager = ReplicaManager();
-    connection.setConnection(primaryAddr, myAddress.port, &replicaManager);
+    ReplicaThread replicaThread;
+    replicaThread.run(&replicaManager, myId, myAddress.port, primaryAddr);
 }
 
 void electionMonitor(ServerAddress primaryAddr) {
