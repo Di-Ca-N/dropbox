@@ -345,6 +345,7 @@ void Connection::syncReadChange(FileId &fileId) {
         receiveFileData(readSock, fileId.totalBlocks, stream);
     } catch (const std::exception &e) {
         stream.close();
+        std::filesystem::remove(filepath);
         throw e;
     }
 
