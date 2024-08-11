@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 3.21)
+// CMakeLists.txt
+
+cmake_minimum_required(VERSION 3.16.3)
 
 set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/build)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
@@ -42,11 +44,19 @@ add_executable(client
     common/utils.cpp
 )
 
+add_executable(binding-agent
+    binding-agent/main.cpp
+    binding-agent/handlers/client-handler.cpp
+    binding-agent/handlers/server-handler.cpp
+)
+
 target_include_directories(server PUBLIC common)
 target_include_directories(client PUBLIC common)
+target_include_directories(binding-agent PUBLIC common)
 
 target_link_libraries(client ${CMAKE_THREAD_LIBSS_INIT})
 target_link_libraries(server ${CMAKE_THREAD_LIBSS_INIT})
+target_link_libraries(binding-agent ${CMAKE_THREAD_LIBSS_INIT})
 
 if(BUILD_TESTS)
     include(FetchContent)
@@ -68,4 +78,3 @@ if(BUILD_TESTS)
     include(GoogleTest)
     gtest_discover_tests(tests)
 endif(BUILD_TESTS)
-
