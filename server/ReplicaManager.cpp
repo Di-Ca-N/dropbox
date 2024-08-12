@@ -234,3 +234,10 @@ void ReplicaManager::printReplicas() const {
                   << std::endl;
     }
 }
+
+void ReplicaManager::notifyAllReplicas(FileOperation op, std::string username) {
+    for (auto &replica : replicas) {
+        // notifica a réplica
+
+    }
+}

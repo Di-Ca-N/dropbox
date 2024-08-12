@@ -30,6 +30,7 @@ class ReplicaManager {
         void sendAllReplicas(int &socketDescr);
         void sendAllFiles(int &socketDescr);
         void printReplicas() const;
+        void notifyAllReplicas(FileOperation op, std::string username);
         std::vector<ServerAddress> getReplicas();
         ServerAddress getNextReplica(ServerAddress currentAddress);
 };

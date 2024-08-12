@@ -81,7 +81,7 @@ void handleClient(int clientSocket, AuthData authData) {
 
             switch(msg.type) {
                 case MsgType::MSG_UPLOAD:
-                    UploadHandler(username, clientSocket, userDeviceManager).run();
+                    UploadHandler(username, clientSocket, userDeviceManager, &replicaManager).run();
                     break;
                 case MsgType::MSG_DOWNLOAD:
                     DownloadHandler(username, clientSocket).run();
@@ -133,9 +133,11 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
                 case MsgType::MSG_HEARTBEAT:
                     HeartBeatHandler(replicaSocket).run();
                     break;
+
                 case MsgType::MSG_UPDATE_TYPE:
                     ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.replicaAddr, &replicaManager).run();
                     break;
+
                 case MsgType::MSG_ELECTION:
                     ElectionHandler(replicaSocket, myAddress, myId, replicaManager.getNextReplica(myAddress), electionManager).run();
                     break;
@@ -143,6 +145,7 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
                 case MsgType::MSG_ELECTED:
                     ElectedHandler(replicaSocket, myId, myAddress, &replicaManager, electionManager).run();
                     break;
+
                 default:
                     break;
             }
