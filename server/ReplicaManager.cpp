@@ -1,9 +1,11 @@
-#include "ReplicaManager.hpp"
 #include <iostream>
 #include <fstream>
 #include <filesystem>
 #include <string>
 #include <cstring>
+
+#include "ReplicaManager.hpp"
+#include "utils.hpp"
 
 
 void ReplicaManager::pushReplica(int replicaId, ServerAddress replicaAddr, int socketDescr) {
@@ -126,7 +128,6 @@ void ReplicaManager::sendAllFiles(int &socketDescr) {
                 if (entry.is_directory()) {
                     dirName = entry.path().filename().string();
                     createDir(socketDescr, dirName);
-
                     countFile = countFiles(entry.path());
                     sendFile(socketDescr, countFile, entry.path());
                 }
@@ -152,7 +153,6 @@ void ReplicaManager::sendFile(int &socketDescr, int fileNum, const std::filesyst
 
         for (const auto& fileEntry : std::filesystem::directory_iterator(filePath)) {
             if (fileEntry.is_regular_file()) {                
-                std::cout << "  Arquivo: " << fileEntry.path() << std::endl;
                 fileId = getFileId(fileEntry.path());
                 sendFileId(socketDescr, fileId);
                 waitConfirmation(socketDescr);
@@ -227,6 +227,59 @@ int ReplicaManager::countFiles(const std::filesystem::path& baseDir) {
     return filesCount;
 }
 
+void ReplicaManager::notifyAllReplicas(FileOperation op, std::string username) {
+    int replicaSock;
+    std::string fileName(op.filename, op.filenameSize);
+    
+    for (auto &replica : replicas) {
+        replicaSock = replica.second.socketDescr;
+        sendUpdateType(replicaSock, UpdateType::UPDATE_FILE_OP);
+        waitConfirmation(replicaSock);
+        switch (op.type) {
+            case FileOpType::FILE_DELETE:
+                break;
+            case FileOpType::FILE_MODIFY:
+                handleFileModify(replicaSock, fileName, username);
+                break;
+            default:
+                break;
+        }
+    }
+
+
+}
+
+void ReplicaManager::handleFileModify(int &socketDescr, std::string filename, std::string username) {
+    std::filesystem::path baseDir(username.c_str());
+    std::filesystem::path filepath = baseDir / filename;
+    std::string dirName = baseDir.filename().string();
+    DirData dirData;
+    FileId fid;
+
+    dirName.copy(dirData.dirName, MAX_DIRNAME);
+    dirData.dirnameLen = dirName.length();
+    
+    std::ifstream file(filepath, std::ios::binary);
+    
+    try {
+        sendFileOperation(socketDescr, FileOpType::FILE_MODIFY);
+        waitConfirmation(socketDescr);
+
+        sendDirName(socketDescr, dirData);
+        waitConfirmation(socketDescr);
+        
+        fid = getFileId(filepath);
+        sendFileId(socketDescr, fid);
+        waitConfirmation(socketDescr);
+
+        sendFileData(socketDescr, fid.totalBlocks, file);
+        waitConfirmation(socketDescr);
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType e) {
+        std::cout << e.what() << "\n";
+    }
+}
 
 void ReplicaManager::printReplicas() const {
     for (const auto& pair : replicas) {
@@ -238,9 +291,3 @@ void ReplicaManager::printReplicas() const {
     }
 }
 
-void ReplicaManager::notifyAllReplicas(FileOperation op, std::string username) {
-    for (auto &replica : replicas) {
-        // notifica a réplica
-
-    }
-}

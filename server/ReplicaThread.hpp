@@ -19,6 +19,9 @@ private:
     void getDirFiles(int socketDescr, std::string dirName);
     void getNewReplica(int socketDescr, ReplicaManager* replicaManager);
     void removeReplica(int socketDescr, ReplicaManager* replicaManager);
+    void handleFileOp(int socketDescr);
+    void fileUpdate(int socketDescr);
+    void handleModify(int socketDescr);
 
    public:
     void run(ReplicaManager* replicaManager, int replicaId,

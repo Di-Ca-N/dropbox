@@ -36,11 +36,9 @@ void UploadHandler::run(){
 
         filename.copy(op.filename, MAX_FILENAME);
         op.filenameSize = fileId.filenameSize;
-
+        
         replicaManager->notifyAllReplicas(op, username);
-
         sendOk(clientSocket);
-
         deviceManager->notifyAllDevices(op);
     } catch (UnexpectedMsgType) {
         sendError(clientSocket, "Unexpected message");

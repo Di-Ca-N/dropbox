@@ -32,6 +32,7 @@ void ReplicaThread::getServerUpdates(ReplicaManager* replicaManager, int replica
                     getNewReplica(socketDescr, replicaManager);
                     break;
                 case UpdateType::UPDATE_FILE_OP:
+                    handleFileOp(socketDescr);
                     break;
                 case UpdateType::UPDATE_CONNECTION_END:
                     removeReplica(socketDescr, replicaManager);
@@ -110,8 +111,8 @@ void ReplicaThread::createDir(int socketDescr) {
         for(int i = 0; i < numDir; i++) {
             dirData = receiveDirName(socketDescr);
             std::string dirName(dirData.dirName, dirData.dirnameLen);
-            std::filesystem::create_directory(dirName + std::to_string(socketDescr));
-            getDirFiles(socketDescr, dirName + std::to_string(socketDescr));
+            std::filesystem::create_directory(dirName + "aa");
+            getDirFiles(socketDescr, dirName + "aa");
         }
     } catch (UnexpectedMsgType) {
         std::cout << "Unexpected response.\n";
@@ -152,6 +153,70 @@ void ReplicaThread::getDirFiles(int socketDescr, std::string dirName) {
         return;
     }
 }
+
+void ReplicaThread::handleFileOp(int socketDescr) {
+    FileOpType opType;
+    try {
+        sendOk(socketDescr);
+
+        opType = receiveFileOperation(socketDescr);
+
+        switch (opType)
+        {
+            case FileOpType::FILE_MODIFY:
+                handleModify(socketDescr);
+                break;
+            case FileOpType::FILE_DELETE:
+                break;
+            default:
+                break;
+        }
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response.\n";
+        return;
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+        return;
+    }
+}
+
+void ReplicaThread::handleModify(int socketDescr) {
+    FileId fileId;
+    DirData dirData;
+    std::string dirName;
+    
+    try {
+        sendOk(socketDescr);
+
+        dirData = receiveDirName(socketDescr);
+        std::string dirName(dirData.dirName, dirData.dirnameLen);
+        std::cout << dirName << std::endl;
+        std::filesystem::path baseDir(dirName.c_str());
+        sendOk(socketDescr);
+        
+        fileId = receiveFileId(socketDescr);
+        std::string filename(fileId.filename, fileId.filenameSize);
+        std::ofstream file(baseDir/ filename, std::fstream::binary);
+        
+        if (file) {
+            sendOk(socketDescr);
+            std::cout << "aqui" << std::endl;
+        } else {
+            sendError(socketDescr, "Could not create file");
+        }
+        
+        receiveFileData(socketDescr, fileId.totalBlocks, file);
+        sendOk(socketDescr);
+        
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response.\n";
+        return;
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+        return;
+    }
+}
+
 
 void ReplicaThread::run(ReplicaManager* replicaManager, int replicaId, uint16_t port, ServerAddress primaryAddr) {
     replicaThread = std::thread(&ReplicaThread::getServerUpdates, this, replicaManager, replicaId, port, primaryAddr);

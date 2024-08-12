@@ -21,6 +21,7 @@ class ReplicaManager {
         int countFiles(const std::filesystem::path& baseDir);
         void createDir(int &socketDescr, std::string dirName);
         void sendFile(int &socketDescr, int fileNum, const std::filesystem::path& filePath);
+        void handleFileModify(int &socketDescr, std::string filename, std::string username);
     
     public: 
         void pushReplica(int replicaId, ServerAddress addr, int socketDescr);
