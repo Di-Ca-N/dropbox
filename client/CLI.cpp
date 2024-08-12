@@ -119,6 +119,12 @@ void CLI::parseCommand(bool &newLine) {
     try {
         std::unique_ptr<Command> command = commandParser->parse(line);
         command->execute();
+    } catch (NoCommandException &e) {
+        std::cout << e.what() << "\n";
+    } catch (InvalidCommandException &e) {
+        std::cout << e.what() << "\n";
+    } catch (InvalidArgumentException &e) {
+        std::cout << e.what() << "\n";
     } catch (ServerConnectionError) {
         std::cout << "Service is offline. Please, try again later.\n";
     } catch (BrokenPipe) {
