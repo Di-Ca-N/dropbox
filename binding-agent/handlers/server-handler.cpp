@@ -9,7 +9,7 @@ void handleServerConnection(int socket) {
     try {
         Message msg = receiveMessage(socket);
 
-        if (msg.type === MsgType::MSG_SERVER_REGESTRY) {
+        if (msg.type == MsgType::MSG_SERVER_REGISTRY) {
             sendOk(socket);
             sendServerRegistry();            
         } else {
