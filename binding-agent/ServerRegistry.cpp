@@ -1,5 +1,3 @@
-// ServerResgistry.cpp
-
 #include "ServerRegistry.hpp"
 
 ServerAddress ServerRegistry::getLastServerAddress() {
