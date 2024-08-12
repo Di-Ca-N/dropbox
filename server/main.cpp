@@ -111,6 +111,7 @@ void handleClient(int clientSocket, AuthData authData) {
     } 
 
     userDeviceManager->disconnectDevice(clientData.deviceId);
+    close(clientSocket);
 }
 
 void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData) {
@@ -125,34 +126,34 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
    
     try {
         sendAuth(replicaSocket, authData);
-        
-        while (true) {
-            Message msg = receiveMessage(replicaSocket);
 
-            switch (msg.type) {
-                case MsgType::MSG_HEARTBEAT:
-                    HeartBeatHandler(replicaSocket).run();
-                    break;
+        Message msg = receiveMessage(replicaSocket);
 
-                case MsgType::MSG_UPDATE_TYPE:
-                    ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.replicaAddr, &replicaManager).run();
-                    break;
+        switch (msg.type) {
+            case MsgType::MSG_HEARTBEAT:
+                HeartBeatHandler(replicaSocket).run();
+                break;
 
-                case MsgType::MSG_ELECTION:
-                    ElectionHandler(replicaSocket, myAddress, myId, replicaManager.getNextReplica(myAddress), electionManager).run();
-                    break;
+            case MsgType::MSG_REPLICATION:
+                ReplicaConnectionHandler(replicaSocket, replicaData.replicaId, replicaData.replicaAddr, &replicaManager).run();
+                // Early return to skip closing the socket. We need to keep it open to send updates to the replica
+                return;
 
-                case MsgType::MSG_ELECTED:
-                    ElectedHandler(replicaSocket, myId, myAddress, &replicaManager, electionManager).run();
-                    break;
+            case MsgType::MSG_ELECTION:
+                ElectionHandler(replicaSocket, myAddress, myId, replicaManager.getNextReplica(myAddress), electionManager).run();
+                break;
 
-                default:
-                    break;
-            }
+            case MsgType::MSG_ELECTED:
+                ElectedHandler(replicaSocket, myId, myAddress, &replicaManager, electionManager).run();
+                break;
+
+            default:
+                break;
         }
     } catch (BrokenPipe) {
         std::cout << "Server " << replicaData.replicaAddr << " disconnected\n";
     }
+    close(replicaSocket);
 }
 
 void handleConnection(int remoteSocket, sockaddr_in remoteAddr) {
@@ -170,7 +171,6 @@ void handleConnection(int remoteSocket, sockaddr_in remoteAddr) {
     } catch (BrokenPipe) {
 
     }
-    close(remoteSocket);
 }
 
 

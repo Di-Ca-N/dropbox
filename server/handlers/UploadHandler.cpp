@@ -30,13 +30,16 @@ void UploadHandler::run(){
         }
 
         receiveFileData(clientSocket, fileId.totalBlocks, file);
+        
+        file.flush(); // Ensure the entire file is written on disk before sending it to the replicas
+
         FileOperation op = {
             .type=FileOpType::FILE_MODIFY,
         };
 
         filename.copy(op.filename, MAX_FILENAME);
         op.filenameSize = fileId.filenameSize;
-        
+
         replicaManager->notifyAllReplicas(op, username);
         sendOk(clientSocket);
         deviceManager->notifyAllDevices(op);
