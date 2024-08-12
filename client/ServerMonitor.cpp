@@ -19,17 +19,25 @@ ServerMonitor::ServerMonitor(
 }
 
 void ServerMonitor::run() {
-    try {
-        while (clientState->get() == AppState::STATE_ACTIVE) {
-            std::optional<FileOperation> operation = connection->syncRead();
+    std::optional<FileOperation> operation;
 
-            if (operation.has_value()) {
-                history->pushEvent(operation.value());             
-                applyTempIfContentUpdate(operation.value());
-            }
+    while (clientState->get() == AppState::STATE_ACTIVE) {
+        try {
+            operation = connection->syncRead();
+        } catch (ErrorReply e) {
+            std::cout << "Error: " << e.what() << "\n";
+            continue;
+        } catch (UnexpectedMsgType) {
+            std::cout << "Unexpected response\n";
+            continue;
+        } catch (BrokenPipe) {
+            continue;
         }
-    } catch (BrokenPipe) {
-        return;
+
+        if (operation.has_value()) {
+            history->pushEvent(operation.value());             
+            applyTempIfContentUpdate(operation.value());
+        }
     }
 }
 

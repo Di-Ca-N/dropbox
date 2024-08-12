@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <unistd.h>
 #include <poll.h>
 #include <cstring>
 
@@ -13,38 +14,97 @@
 #include "ClientConfig.hpp"
 
 
-bool Connection::connectToServer(std::string username, std::string ip, int port) {
-    createSocket(commandSock, ip, port);
-    if (!authenticate(commandSock, username)) return false;
+void Connection::connectToService(std::string username, std::string ip, int port) {
+    this->username = username;
 
-    createSocket(writeSock, ip, port);
-    if (!authenticate(writeSock, username)) return false;
-    setWriteConnection(writeSock);
+    in_addr_t binderIp = convertIpStringToNetwork(ip);
+    in_port_t binderPort = convertPortIntToNetwork(port);
 
-    createSocket(readSock, ip, port);
-    if(!authenticate(readSock, username)) return false;
-    setReadConnection();
-    
+    connectToBinder(binderIp, binderPort);
+    retryConnection();
+}
+
+in_addr_t Connection::convertIpStringToNetwork(std::string ipString) {
+    in_addr ipNetwork;
+    inet_aton(ipString.data(), &ipNetwork);
+    return ipNetwork.s_addr;
+}
+
+in_port_t Connection::convertPortIntToNetwork(int port) {
+    return htons(port);
+}
+
+void Connection::connectToBinder(in_addr_t &ip, in_port_t &port) {
+    binderSock = createSocket(ip, port);
+    if (binderSock == -1)
+        throw BinderConnectionError();
+}
+
+void Connection::retryConnection() {
+    ServiceStatus serviceStatus;
+    ServerAddress serverAddress;
+
+    sendMessage(binderSock, MsgType::MSG_STATUS_INQUIRY, nullptr, 0); 
+    waitConfirmation(binderSock);
+
+    serverAddress = receiveServerAddress(binderSock); 
+    sendOk(binderSock);
+
+    connectToServer(serverAddress.ip, serverAddress.port);
+}
+
+void Connection::connectToServer(in_addr_t &ip, in_port_t &port) {
+    try {
+        heartbeatSock = createSocket(ip, port);
+
+        commandSock = createSocket(ip, port);
+        authenticate(commandSock, username);
+
+        readSock = createSocket(ip, port);
+        authenticate(writeSock, username);
+        setWriteConnection(writeSock);
+
+        writeSock = createSocket(ip, port);
+        authenticate(readSock, username);
+        setReadConnection();
+    } catch (const std::exception &e) {
+        // Ou conecta todos, ou não conecta nenhum.
+        close(heartbeatSock);
+        close(commandSock);
+        close(readSock);
+        close(writeSock);
+
+        throw e;
+    }
+}
+
+bool Connection::hearsHeartbeat(int timeout) {
+    try {
+        waitHeartbeat(heartbeatSock, timeout);
+    } catch (...) {
+        return false;
+    }
+
     return true;
 }
 
-void Connection::createSocket(int &socketDescr, std::string ip, int port) {
+int Connection::createSocket(in_addr_t &ip, in_port_t &port) {
     int serverConnection = socket(AF_INET, SOCK_STREAM, 0);
 
     sockaddr_in addr;
-    addr.sin_port = htons(port);
     addr.sin_family = AF_INET;
-    inet_aton(ip.data(), &addr.sin_addr);
+    addr.sin_addr.s_addr = ip;
+    addr.sin_port = port;
  
     if (connect(serverConnection, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
         std::cout << "Error when connecting to server\n";
-        return;
+        return -1;
     }
 
-    socketDescr = serverConnection;
+    return serverConnection;
 }
 
-bool Connection::authenticate(int &socketDescr, std::string username) {
+void Connection::authenticate(int &socketDescr, std::string username) {
     AuthData authData = { .type=AuthType::AUTH_CLIENT };
     username.copy(authData.clientData.username, MAX_USERNAME);
     authData.clientData.usernameLen = username.length();
@@ -54,47 +114,22 @@ bool Connection::authenticate(int &socketDescr, std::string username) {
         authData.clientData.deviceId = deviceId;
     }
 
-    try {
-        sendAuth(socketDescr, authData);
-        AuthData authResponse = receiveAuth(socketDescr);
+    sendAuth(socketDescr, authData);
+    AuthData authResponse = receiveAuth(socketDescr);
 
-        if (this->deviceId == -1) {
-            this->deviceId = authResponse.clientData.deviceId;
-        }
-        return true;
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response.\n";
-        return false;
-    } catch (ErrorReply e) {
-        std::cout << "Error: " << e.what() << "\n";
-        return false;
-    } catch (BrokenPipe) {
-        return false;
+    if (this->deviceId == -1) {
+        this->deviceId = authResponse.clientData.deviceId;
     }
 }
 
 void Connection::setWriteConnection(int &socketDescr) {
-    try {
-        sendMessage(socketDescr, MsgType::MSG_SYNC_CLIENT_TO_SERVER, nullptr, 0);
-        waitConfirmation(socketDescr);
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response.\n";
-        return;
-    } catch (ErrorReply e) {
-        std::cout << "Error: " << e.what() << "\n";
-        return;
-    }
+    sendMessage(socketDescr, MsgType::MSG_SYNC_CLIENT_TO_SERVER, nullptr, 0);
+    waitConfirmation(socketDescr);
 }
 
 void Connection::setReadConnection() {
-    try {
-        sendMessage(readSock, MsgType::MSG_SYNC_SERVER_TO_CLIENT, nullptr, 0);
-        waitConfirmation(readSock);
-    } catch (ErrorReply e) {
-        std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response\n";
-    }
+    sendMessage(readSock, MsgType::MSG_SYNC_SERVER_TO_CLIENT, nullptr, 0);
+    waitConfirmation(readSock);
 }
 
 void Connection::upload(std::filesystem::path filepath) {
@@ -121,53 +156,42 @@ void Connection::upload(std::filesystem::path filepath) {
     };
     filename.copy(fid.filename, MAX_FILENAME);
 
-    try {
-        sendMessage(commandSock, MsgType::MSG_UPLOAD, nullptr, 0);
-        waitConfirmation(commandSock);
+    sendMessage(commandSock, MsgType::MSG_UPLOAD, nullptr, 0);
+    waitConfirmation(commandSock);
 
-        sendFileId(commandSock, fid);
-        waitConfirmation(commandSock);
+    sendFileId(commandSock, fid);
+    waitConfirmation(commandSock);
 
-        sendFileData(commandSock, fid.totalBlocks, file);
-        waitConfirmation(commandSock);
-
-        std::cout << "Upload successful!\n";
-    } catch (BrokenPipe) {
-        std::cout << "Connection broken during operation aaaa\n";
-    } catch (ErrorReply e) {
-        std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response\n";
-    }
+    sendFileData(commandSock, fid.totalBlocks, file);
+    waitConfirmation(commandSock);
 }
 
 void Connection::download(std::filesystem::path filepath) {
     std::string filename = filepath.filename().string();
+
+    sendMessage(commandSock, MsgType::MSG_DOWNLOAD, nullptr, 0);
+    waitConfirmation(commandSock);
+
+    FileId fid = {.filenameSize = static_cast<u_int8_t>(filename.size())};
+    filename.copy(fid.filename, MAX_FILENAME);
+
+    sendFileId(commandSock, fid);
+    waitConfirmation(commandSock);
+
+    FileId fileData = receiveFileId(commandSock);
+    sendOk(commandSock);
+
+    std::ofstream file(filepath, std::ios::binary);
+
     try {
-        sendMessage(commandSock, MsgType::MSG_DOWNLOAD, nullptr, 0);
-        waitConfirmation(commandSock);
-
-        FileId fid = {.filenameSize = static_cast<u_int8_t>(filename.size())};
-        filename.copy(fid.filename, MAX_FILENAME);
-
-        sendFileId(commandSock, fid);
-        waitConfirmation(commandSock);
-
-        FileId fileData = receiveFileId(commandSock);
-        sendOk(commandSock);
-
-        std::ofstream file(filepath, std::ios::binary);
         receiveFileData(commandSock, fileData.totalBlocks, file);
-        sendOk(commandSock);
-
-        std::cout << "Download successful\n";
-    } catch (BrokenPipe) {
-        std::cout << "Connection broken during operation\n";
-    } catch (ErrorReply e) {
-        std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response\n";
+    } catch (const std::exception &e) {
+        file.close();
+        std::filesystem::remove(filepath);
+        throw e;
     }
+
+    sendOk(commandSock);
 }
 
 void Connection::delete_(std::filesystem::path filepath) {
@@ -177,45 +201,27 @@ void Connection::delete_(std::filesystem::path filepath) {
     filename.copy(fid.filename, MAX_FILENAME);
     fid.filenameSize = static_cast<u_int8_t>(filename.size());
     
-    try {
-        sendMessage(commandSock, MsgType::MSG_DELETE, nullptr, 0);
-        waitConfirmation(commandSock);
+    sendMessage(commandSock, MsgType::MSG_DELETE, nullptr, 0);
+    waitConfirmation(commandSock);
 
-        sendFileId(commandSock, fid);
-        waitConfirmation(commandSock);
-
-        std::cout << "File deleted successfully\n";
-    } catch (BrokenPipe) {
-        std::cout << "Connection broken during operation\n";
-    } catch (ErrorReply e) {
-        std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response\n";
-    }
+    sendFileId(commandSock, fid);
+    waitConfirmation(commandSock);
 }
 
 std::vector<FileMeta> Connection::listServer() {
     int numFiles;
     std::vector<FileMeta> fileMetas;
 
-    try {
-        sendMessage(commandSock, MsgType::MSG_LIST_SERVER, nullptr, 0);
-        waitConfirmation(commandSock);
+    sendMessage(commandSock, MsgType::MSG_LIST_SERVER, nullptr, 0);
+    waitConfirmation(commandSock);
 
-        numFiles = receiveNumFiles(commandSock);
-        sendOk(commandSock);
+    numFiles = receiveNumFiles(commandSock);
+    sendOk(commandSock);
 
-        for (int i = 0; i < numFiles; i++)
-            fileMetas.push_back(receiveFileMeta(commandSock));
+    for (int i = 0; i < numFiles; i++)
+        fileMetas.push_back(receiveFileMeta(commandSock));
 
-        sendOk(commandSock);
-    } catch(BrokenPipe) {
-        std::cout << "Connection broken during operation\n";
-    } catch (ErrorReply e) {
-        std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response\n";
-    }
+    sendOk(commandSock);
 
     return fileMetas;
 }
@@ -234,13 +240,7 @@ std::optional<FileOperation> Connection::syncRead() {
     if (pollStatus == -1) {
         std::cout << "Error while trying to poll server\n";
     } else if (pollStatus > 0) {
-        try {
-            operation = syncProcessRead();
-        } catch (ErrorReply e) {
-            std::cout << "Error: " << e.what() << "\n";
-        } catch (UnexpectedMsgType) {
-            std::cout << "Unexpected response\n";
-        }
+        operation = syncProcessRead();
     }
 
     return operation;
@@ -300,7 +300,15 @@ void Connection::syncReadChange(FileId &fileId) {
             filepath,
             std::ofstream::binary
     );
-    receiveFileData(readSock, fileId.totalBlocks, stream);
+
+    try {
+        receiveFileData(readSock, fileId.totalBlocks, stream);
+    } catch (const std::exception &e) {
+        stream.close();
+        std::filesystem::remove(filepath);
+        throw e;
+    }
+
     stream.close();
     sendOk(readSock);
 }
@@ -313,21 +321,15 @@ void Connection::syncReadDelete(FileId &fileId) {
 }
 
 void Connection::syncWrite(FileOpType op, std::filesystem::path target) {
-    try {
-        switch (op) {
-            case FileOpType::FILE_MODIFY:
-                sendChange(target);
-                break;
-            case FileOpType::FILE_DELETE:
-                sendDelete(target);
-                break;
-            default:
-                break;
-        }
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response\n";
-    } catch (ErrorReply e) {
-        std::cout << "Error: " << e.what() << "\n";
+    switch (op) {
+        case FileOpType::FILE_MODIFY:
+            sendChange(target);
+            break;
+        case FileOpType::FILE_DELETE:
+            sendDelete(target);
+            break;
+        default:
+            break;
     }
 }
 void Connection::sendChange(std::filesystem::path target) {

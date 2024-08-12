@@ -1,4 +1,5 @@
 #include <memory>
+#include <iostream>
 #include <fcntl.h>
 #include <sys/unistd.h>
 #include <cstring>
@@ -38,16 +39,17 @@ void ClientMonitor::run(std::string sync_dir) {
        clientState->setUntrackedIfNotClosing(); 
     }
 
-    try {
-        while (clientState->get() == AppState::STATE_ACTIVE) {
-            bytesRead = read(inotifyFd, buffer, EVENT_BUF_LEN); 
-            if (bytesRead > 0) {
-                processEventBuffer(buffer, bytesRead);
-            }
-        }
-    } catch (BrokenPipe) {
-        close(inotifyFd);
-        return;
+    while (clientState->get() == AppState::STATE_ACTIVE) {
+        bytesRead = read(inotifyFd, buffer, EVENT_BUF_LEN); 
+        processEventBuffer(buffer, bytesRead);
+        try {
+            sendOperationIfNotDuplicated(queue.front());
+            queue.pop();
+        } catch (ErrorReply e) {
+            std::cout << "Error: " << e.what() << "\n";
+        } catch (UnexpectedMsgType) {
+            std::cout << "Unexpected response\n";
+        } catch (BrokenPipe) {}
     }
 
     close(inotifyFd);
@@ -75,13 +77,21 @@ void ClientMonitor::processEventBuffer(unsigned char buffer[], int bytesRead) {
 
         if (!fileIsTemporary(event->name, event->len)) {
             if (event->mask & IN_CLOSE_WRITE || event->mask & IN_MOVED_TO) {
-                //std::cout << "MODIFY\n";
-                sendOperationIfNotDuplicated(FileOpType::FILE_MODIFY, event);
+                auto operation = makeFileOperation(
+                        FileOpType::FILE_MODIFY,
+                        event->name,
+                        event->len
+                );
+                queue.push(operation);
             }
 
             if (event->mask & IN_DELETE || event->mask & IN_MOVED_FROM){
-                //std::cout << "DELETE\n";
-                sendOperationIfNotDuplicated(FileOpType::FILE_DELETE, event);
+                auto operation = makeFileOperation(
+                        FileOpType::FILE_DELETE,
+                        event->name,
+                        event->len
+                );
+                queue.push(operation);
             }
         }
 
@@ -113,15 +123,12 @@ void ClientMonitor::removeTrailingZeros(std::string &str) {
     }
 }
 
-void ClientMonitor::sendOperationIfNotDuplicated(
-        FileOpType opType,
-        inotify_event *event) {
-    auto operation = makeFileOperation(opType, event->name, event->len);
-    std::string eventType = operation.type == FileOpType::FILE_MODIFY ? "Change" : "Other";
-    //std::cout << "Registered event " << eventType << " on file " << std::string(operation.filename, operation.filenameSize).size() << "\n";
-
-    if (!history->popEvent(operation))
-        connection->syncWrite(opType, event->name);
+void ClientMonitor::sendOperationIfNotDuplicated(FileOperation &operation) {
+    if (!history->popEvent(operation)) {
+        auto lastCharIndex = operation.filename + operation.filenameSize;
+        std::filesystem::path filePath(operation.filename, lastCharIndex);
+        connection->syncWrite(operation.type, filePath);
+    }
 }
 
 FileOperation ClientMonitor::makeFileOperation(

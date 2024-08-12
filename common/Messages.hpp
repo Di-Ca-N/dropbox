@@ -28,11 +28,10 @@ enum class MsgType : u_int8_t {
     MSG_NUM_FILES,
     MSG_OK,
     MSG_SERVER_ADDRESS,
-    MSG_SERVICE_STATUS,
     MSG_STATUS_INQUIRY,
     MSG_SYNC_CLIENT_TO_SERVER,
     MSG_SYNC_SERVER_TO_CLIENT,
-    MSG_UPLOAD
+    MSG_UPLOAD,
 };
 
 // Helper function to get a string representation of MsgType
@@ -139,8 +138,6 @@ void sendFileMeta(int sock_fd, FileMeta meta);
 FileMeta receiveFileMeta(int sock_fd);
 void sendFileOperation(int sock_fd, FileOpType type);
 FileOpType receiveFileOperation(int sock_fd);
-void sendServiceStatus(int sock_fd, ServiceStatus status);
-ServiceStatus receiveServiceStatus(int sock_fd);
 void sendServerAddress(int sock_fd, ServerAddress address);
 ServerAddress receiveServerAddress(int sock_fd);
 void sendHeartbeat(int sock_fd);

@@ -21,7 +21,6 @@ std::map<MsgType, std::string> msgTypeNames = {
     {MsgType::MSG_NUM_FILES, "MSG_NUM_FILES"},
     {MsgType::MSG_OK, "MSG_OK"},
     {MsgType::MSG_SERVER_ADDRESS, "MSG_SERVER_ADDRESS"},
-    {MsgType::MSG_SERVICE_STATUS, "MSG_SERVICE_STATUS"},
     {MsgType::MSG_STATUS_INQUIRY, "MSG_STATUS_INQUIRY"},
     {MsgType::MSG_SYNC_CLIENT_TO_SERVER, "MSG_SYNC_CLIENT_TO_SERVER"},
     {MsgType::MSG_SYNC_SERVER_TO_CLIENT, "MSG_SYNC_SERVER_TO_CLIENT"},
@@ -201,14 +200,6 @@ void sendFileOperation(int sock_fd, FileOpType opType) {
 
 FileOpType receiveFileOperation(int sock_fd) {
     return receivePayload<FileOpType>(sock_fd, MsgType::MSG_FILE_OPERATION);
-}
-
-void sendServiceStatus(int sock_fd, ServiceStatus status) {
-    sendMessage(sock_fd, MsgType::MSG_SERVICE_STATUS, &status, sizeof(status));
-}
-
-ServiceStatus receiveServiceStatus(int sock_fd) {
-    return receivePayload<ServiceStatus>(sock_fd, MsgType::MSG_SERVICE_STATUS);
 }
 
 void sendServerAddress(int sock_fd, ServerAddress address) {
