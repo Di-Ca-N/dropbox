@@ -2,11 +2,13 @@
 
 #include <iostream>
 
-#include "ServerRegistry.hpp"
-#include "common/Messages.hpp"
+#include "../ServerRegistry.hpp"
+#include "Messages.hpp"
 #include "client-handler.hpp"
 
 extern ServerRegistry registry;
+
+void respondToServiceDiscovery(int socket);
 
 void handleClientConnection(int socket) {
     try {

@@ -4,7 +4,7 @@
 
 #include <mutex>
 
-#include "common/Messages.hpp"
+#include "Messages.hpp"
 
 class ServerRegistry {
 private:

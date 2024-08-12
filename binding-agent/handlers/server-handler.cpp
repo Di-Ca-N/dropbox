@@ -1,10 +1,12 @@
 #include <iostream>
 
-#include "ServerRegistry.hpp"
-#include "common/Messages.hpp"
+#include "../ServerRegistry.hpp"
+#include "Messages.hpp"
 #include "server-handler.hpp"
 
 extern ServerRegistry registry;
+
+void sendServerRegistry(int socket);
 
 void handleServerConnection(int socket) {
     try {
