@@ -32,6 +32,7 @@ ServerAddress ReplicaManager::getNextReplica(ServerAddress currentAddress) {
             return replicaAddrs[nextIdx];
         }
     }
+    throw std::runtime_error("Current address is not a registered replica");
 }
 
 void ReplicaManager::updateReplica(int replicaId, UpdateType updateType) {
