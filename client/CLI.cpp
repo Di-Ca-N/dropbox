@@ -101,6 +101,8 @@ void CLI::initializeSyncDir() {
     );
     try {
         cmd.execute();
+    } catch (ServerConnectionError) {
+        std::cout << "Service is offline. Please, try again later.\n";
     } catch (BrokenPipe) {
         std::cout << "Service is offline. Please, try again later.\n";
     } catch (ErrorReply e) {
@@ -117,6 +119,8 @@ void CLI::parseCommand(bool &newLine) {
     try {
         std::unique_ptr<Command> command = commandParser->parse(line);
         command->execute();
+    } catch (ServerConnectionError) {
+        std::cout << "Service is offline. Please, try again later.\n";
     } catch (BrokenPipe) {
         std::cout << "Service is offline. Please, try again later.\n";
     } catch (ErrorReply e) {

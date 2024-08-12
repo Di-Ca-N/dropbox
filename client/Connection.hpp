@@ -25,6 +25,7 @@ private:
 
     void connectToBinder(in_addr_t &ip, in_port_t &port);
     void connectToServer(in_addr_t &ip, in_port_t &port);
+    void undoServerConnection();
 
     int createSocket(in_addr_t &ip, in_port_t &port);
     void authenticate(int &socketDescr, std::string username);
@@ -53,6 +54,11 @@ public:
 class BinderConnectionError : public std::exception {
 public:
     BinderConnectionError(){};
+};
+
+class ServerConnectionError : public std::exception {
+public:
+    ServerConnectionError(){};
 };
 
 #endif

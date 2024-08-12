@@ -44,6 +44,9 @@ void Connection::retryConnection() {
     ServiceStatus serviceStatus;
     ServerAddress serverAddress;
 
+    if (binderSock == -1)
+        throw ServerConnectionError();
+
     sendMessage(binderSock, MsgType::MSG_STATUS_INQUIRY, nullptr, 0); 
     waitConfirmation(binderSock);
 
@@ -54,32 +57,51 @@ void Connection::retryConnection() {
 }
 
 void Connection::connectToServer(in_addr_t &ip, in_port_t &port) {
-    try {
-        heartbeatSock = createSocket(ip, port);
+    if ((heartbeatSock = createSocket(ip, port)) == -1) {
+        undoServerConnection();
+        throw ServerConnectionError();
+    }
 
-        commandSock = createSocket(ip, port);
-        authenticate(commandSock, username);
+    if ((commandSock = createSocket(ip, port)) == -1) {
+        undoServerConnection();
+        throw ServerConnectionError();
+    }
 
-        readSock = createSocket(ip, port);
-        authenticate(writeSock, username);
-        setWriteConnection(writeSock);
+    if ((readSock = createSocket(ip, port)) == -1) {
+        undoServerConnection();
+        throw ServerConnectionError();
+    }
 
-        writeSock = createSocket(ip, port);
-        authenticate(readSock, username);
-        setReadConnection();
-    } catch (const std::exception &e) {
-        // Ou conecta todos, ou não conecta nenhum.
+    if ((writeSock = createSocket(ip, port)) == -1) {
+        undoServerConnection();
+        throw ServerConnectionError();
+    }
+}
+
+void Connection::undoServerConnection() {
+    if (heartbeatSock != -1)
         close(heartbeatSock);
+
+    if (commandSock != -1)
         close(commandSock);
+
+    if (readSock != -1)
         close(readSock);
+
+    if (writeSock != -1)
         close(writeSock);
 
-        throw e;
-    }
+    heartbeatSock = -1;
+    commandSock = -1;
+    readSock = -1;
+    writeSock = -1;
 }
 
 bool Connection::hearsHeartbeat(int timeout) {
     try {
+        if (heartbeatSock == -1)
+            return false;
+
         waitHeartbeat(heartbeatSock, timeout);
     } catch (...) {
         return false;
@@ -97,7 +119,6 @@ int Connection::createSocket(in_addr_t &ip, in_port_t &port) {
     addr.sin_port = port;
  
     if (connect(serverConnection, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
-        std::cout << "Error when connecting to server\n";
         return -1;
     }
 
@@ -128,14 +149,16 @@ void Connection::setWriteConnection(int &socketDescr) {
 }
 
 void Connection::setReadConnection() {
+    if (readSock == -1)
+        throw ServerConnectionError();
+
     sendMessage(readSock, MsgType::MSG_SYNC_SERVER_TO_CLIENT, nullptr, 0);
     waitConfirmation(readSock);
 }
 
 void Connection::upload(std::filesystem::path filepath) {
     if (commandSock == -1) {
-        std::cout << "Server connection is closed\n";
-        return;
+        throw ServerConnectionError();
     }
 
     std::ifstream file(filepath, std::ios::binary);
@@ -167,6 +190,9 @@ void Connection::upload(std::filesystem::path filepath) {
 }
 
 void Connection::download(std::filesystem::path filepath) {
+    if (commandSock == -1)
+        throw ServerConnectionError();
+
     std::string filename = filepath.filename().string();
 
     sendMessage(commandSock, MsgType::MSG_DOWNLOAD, nullptr, 0);
@@ -195,6 +221,9 @@ void Connection::download(std::filesystem::path filepath) {
 }
 
 void Connection::delete_(std::filesystem::path filepath) {
+    if (commandSock == -1)
+        throw ServerConnectionError();
+
     std::string filename = filepath.filename().string();
 
     FileId fid;
@@ -211,6 +240,9 @@ void Connection::delete_(std::filesystem::path filepath) {
 std::vector<FileMeta> Connection::listServer() {
     int numFiles;
     std::vector<FileMeta> fileMetas;
+
+    if (commandSock == -1)
+        throw ServerConnectionError();
 
     sendMessage(commandSock, MsgType::MSG_LIST_SERVER, nullptr, 0);
     waitConfirmation(commandSock);
@@ -232,6 +264,9 @@ std::optional<FileOperation> Connection::syncRead() {
     struct pollfd pfd;
     std::optional<FileOperation> operation;
 
+    if (readSock == -1)
+        throw ServerConnectionError();
+
     pfd.fd = readSock;
     pfd.events = POLLIN;
 
@@ -249,6 +284,9 @@ std::optional<FileOperation> Connection::syncRead() {
 std::optional<FileOperation> Connection::syncProcessRead() {
     FileId fileId;
     FileOpType fileOpType;
+
+    if (readSock == -1)
+        throw ServerConnectionError();
 
     fileOpType = receiveFileOperation(readSock);
     sendOk(readSock);
@@ -290,6 +328,9 @@ FileOperation Connection::makeFileOperation(
 }
 
 void Connection::syncReadChange(FileId &fileId) {
+    if (readSock == -1)
+        throw ServerConnectionError();
+
     std::ofstream stream;
     std::filesystem::path syncDir(SYNC_DIR);
 
@@ -314,6 +355,9 @@ void Connection::syncReadChange(FileId &fileId) {
 }
 
 void Connection::syncReadDelete(FileId &fileId) {
+    if (readSock == -1)
+        throw ServerConnectionError();
+
     std::filesystem::path syncDir(SYNC_DIR);
     std::string filename(fileId.filename, fileId.filenameSize);
     std::filesystem::remove(syncDir / filename);
@@ -333,6 +377,9 @@ void Connection::syncWrite(FileOpType op, std::filesystem::path target) {
     }
 }
 void Connection::sendChange(std::filesystem::path target) {
+    if (writeSock == -1)
+        throw ServerConnectionError();
+
     std::filesystem::path syncDir(SYNC_DIR);
     std::filesystem::path filepath = syncDir / target;
 
@@ -358,6 +405,9 @@ void Connection::sendChange(std::filesystem::path target) {
 }
 
 void Connection::sendDelete(std::filesystem::path target) {
+    if (writeSock == -1)
+        throw ServerConnectionError();
+
     FileId fileId;
     std::string filename = target.filename().string();
     filename.copy(fileId.filename, MAX_FILENAME);

@@ -59,6 +59,7 @@ void acceptConnections(int port, void (*handler)(int)) {
 
     while (true) {
         int remoteDescriptor = accept(socketDescriptor, nullptr, nullptr);
+        std::cout << "Accepted connection on port " << port << "\n";
         connections.push_back(std::thread(handler, remoteDescriptor));
     }
 

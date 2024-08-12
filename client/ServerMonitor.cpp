@@ -32,6 +32,8 @@ void ServerMonitor::run() {
             continue;
         } catch (BrokenPipe) {
             continue;
+        } catch (ServerConnectionError) {
+            continue;
         }
 
         if (operation.has_value()) {

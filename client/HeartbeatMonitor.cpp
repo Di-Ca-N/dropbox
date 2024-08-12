@@ -18,6 +18,8 @@ void HeartbeatMonitor::run() {
                 connection->retryConnection();
             } catch (BinderConnectionError) {
                 std::cout << "Connection with binder was broken\n";
+            } catch (ServerConnectionError) {
+                // Não faz nada
             } catch (ErrorReply e) {
                 std::cout << "Error: " << e.what() << "\n";
             } catch (UnexpectedMsgType) {

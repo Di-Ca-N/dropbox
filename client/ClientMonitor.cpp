@@ -49,7 +49,11 @@ void ClientMonitor::run(std::string sync_dir) {
             std::cout << "Error: " << e.what() << "\n";
         } catch (UnexpectedMsgType) {
             std::cout << "Unexpected response\n";
-        } catch (BrokenPipe) {}
+        } catch (BrokenPipe) {
+            // Não faz nada
+        } catch (ServerConnectionError) {
+            // Não faz nada
+        }
     }
 
     close(inotifyFd);
