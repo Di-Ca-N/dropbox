@@ -44,6 +44,7 @@ void ReplicaThread::getServerUpdates(ReplicaManager* replicaManager, int replica
     close(socketDescr);
 }
 
+
 void ReplicaThread::initializeReplicaManager(int socketDescr, ReplicaManager *replicaManager) {
     ReplicaData replicaData;
     int numReplicas = 0;
@@ -140,6 +141,8 @@ void ReplicaThread::getDirFiles(int socketDescr, std::string dirName) {
             } else {
                 sendError(socketDescr, "Could not create file");
             }
+
+            receiveFileData(socketDescr, fileId.totalBlocks, file);
         }
     } catch (UnexpectedMsgType) {
         std::cout << "Unexpected response.\n";
@@ -153,4 +156,5 @@ void ReplicaThread::getDirFiles(int socketDescr, std::string dirName) {
 void ReplicaThread::run(ReplicaManager* replicaManager, int replicaId, uint16_t port, ServerAddress primaryAddr) {
     replicaThread = std::thread(&ReplicaThread::getServerUpdates, this, replicaManager, replicaId, port, primaryAddr);
     replicaThread.detach();
+    
 }

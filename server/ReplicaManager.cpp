@@ -156,6 +156,9 @@ void ReplicaManager::sendFile(int &socketDescr, int fileNum, const std::filesyst
                 fileId = getFileId(fileEntry.path());
                 sendFileId(socketDescr, fileId);
                 waitConfirmation(socketDescr);
+
+                std::ifstream file(fileEntry.path(), std::ios::binary);
+                sendFileData(socketDescr, fileId.totalBlocks, file);
             }
         }
     } catch (UnexpectedMsgType) {

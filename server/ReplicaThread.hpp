@@ -9,6 +9,7 @@ class ReplicaThread {
 private:
     ReplicaData replicaData;
     std::thread replicaThread;
+    std::thread syncThread;
     
     void getServerUpdates(ReplicaManager* replicaManager,
                           int replicaId, uint16_t port,
