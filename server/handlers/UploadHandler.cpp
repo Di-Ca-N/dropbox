@@ -31,7 +31,7 @@ void UploadHandler::run(){
 
         receiveFileData(clientSocket, fileId.totalBlocks, file);
         
-        file.flush(); // Ensure the entire file is written on disk before sending it to the replicas
+        file.flush(); // Ensure the entire file is written to disk before synchronization
 
         FileOperation op = {
             .type=FileOpType::FILE_MODIFY,

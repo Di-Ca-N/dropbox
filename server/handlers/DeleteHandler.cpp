@@ -5,10 +5,11 @@
 
 #include "Messages.hpp"
 
-DeleteHandler::DeleteHandler(std::string username, int clientSocket, DeviceManager *deviceManager) {
+DeleteHandler::DeleteHandler(std::string username, int clientSocket, DeviceManager *deviceManager, ReplicaManager *replicaManager) {
     this->clientSocket = clientSocket;
     this->username = username;
     this->deviceManager = deviceManager;
+    this->replicaManager = replicaManager;
 }
 
 void DeleteHandler::run() {
@@ -20,13 +21,14 @@ void DeleteHandler::run() {
         std::filesystem::path filepath = baseDir / filename;
 
         if (std::filesystem::remove(filepath)) {
-            sendOk(clientSocket);
-
             FileOperation fileOp;
             filename.copy(fileOp.filename, MAX_FILENAME);
             fileOp.filenameSize = filename.size();
             fileOp.type = FileOpType::FILE_DELETE;
 
+            replicaManager->notifyAllReplicas(fileOp, username);
+    
+            sendOk(clientSocket);
             deviceManager->notifyAllDevices(fileOp);
         } else {
             sendError(clientSocket, "File does not exist");

@@ -87,7 +87,7 @@ void handleClient(int clientSocket, AuthData authData) {
                     DownloadHandler(username, clientSocket).run();
                     break;
                 case MsgType::MSG_DELETE:
-                    DeleteHandler(username, clientSocket, userDeviceManager).run();
+                    DeleteHandler(username, clientSocket, userDeviceManager, &replicaManager).run();
                     break;
                 case MsgType::MSG_LIST_SERVER:
                     ListServerHandler(username, clientSocket).run();
@@ -96,7 +96,7 @@ void handleClient(int clientSocket, AuthData authData) {
                     SyncServerToClientHandler(username, clientSocket, device).run();
                     break;
                 case MsgType::MSG_SYNC_CLIENT_TO_SERVER:
-                    SyncClientToServerHandler(username, clientSocket, clientData.deviceId, userDeviceManager).run();
+                    SyncClientToServerHandler(username, clientSocket, clientData.deviceId, userDeviceManager, &replicaManager).run();
                     break;
                 case MsgType::MSG_HEARTBEAT:
                     HeartBeatHandler(clientSocket).run();

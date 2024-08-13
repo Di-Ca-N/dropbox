@@ -241,7 +241,9 @@ void ReplicaManager::notifyAllReplicas(FileOperation op, std::string username) {
             case FileOpType::FILE_MODIFY:
                 handleFileModify(replicaSock, fileName, username);
                 break;
-            
+            case FileOpType::FILE_DELETE:
+                handleFileDelete(replicaSock, fileName, username);
+                break;
             default:
                 break;
         }
@@ -250,6 +252,7 @@ void ReplicaManager::notifyAllReplicas(FileOperation op, std::string username) {
 
 void ReplicaManager::handleFileModify(int &socketDescr, std::string filename, std::string username) {
     std::cout << "Sending update on file " << filename << " of " << username << "\n";
+
     sendFileOperation(socketDescr, FileOpType::FILE_MODIFY);
     waitConfirmation(socketDescr);
 
@@ -271,31 +274,28 @@ void ReplicaManager::handleFileModify(int &socketDescr, std::string filename, st
     std::ifstream file(filepath, std::ios::binary);
     sendFileData(socketDescr, fid.totalBlocks, file);
     waitConfirmation(socketDescr);
-    
+}
 
-    // dirName.copy(dirData.dirName, MAX_DIRNAME);
-    // dirData.dirnameLen = dirName.length();
-    
-    // std::ifstream file(filepath, std::ios::binary);
-    
-    // try {
-    //     sendFileOperation(socketDescr, FileOpType::FILE_MODIFY);
-    //     waitConfirmation(socketDescr);
+void ReplicaManager::handleFileDelete(int socketDescr, std::string filename, std::string username) {
+    std::cout << "Sending deletion on file " << filename << " of " << username << "\n";
+    sendFileOperation(socketDescr, FileOpType::FILE_DELETE);
+    waitConfirmation(socketDescr);
 
-    //     sendDirName(socketDescr, dirData);
-    //     waitConfirmation(socketDescr);
-        
-    //     fid = getFileId(filepath);
-    //     sendFileId(socketDescr, fid);
-    //     waitConfirmation(socketDescr);
+    std::filesystem::path baseDir(username.c_str());
+    std::string dirName = baseDir.filename().string();
+    DirData dirData;
+    dirName.copy(dirData.dirName, MAX_DIRNAME);
+    dirData.dirnameLen = dirName.length();
+    sendDirName(socketDescr, dirData);
+    waitConfirmation(socketDescr);
 
-    //     sendFileData(socketDescr, fid.totalBlocks, file);
-    //     waitConfirmation(socketDescr);
-    // } catch (ErrorReply e) {
-    //     std::cout << "Error: " << e.what() << "\n";
-    // } catch (UnexpectedMsgType e) {
-    //     std::cout << e.what() << "\n";
-    // }
+    std::filesystem::path filepath = baseDir / filename;
+
+    FileId fid;
+    filename.copy(fid.filename, MAX_FILENAME);
+    fid.filenameSize = filename.size();
+    sendFileId(socketDescr, fid);
+    waitConfirmation(socketDescr);
 }
 
 void ReplicaManager::printReplicas() const {

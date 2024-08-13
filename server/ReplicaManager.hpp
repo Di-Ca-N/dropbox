@@ -22,7 +22,8 @@ class ReplicaManager {
         void createDir(int &socketDescr, std::string dirName);
         void sendFile(int &socketDescr, int fileNum, const std::filesystem::path& filePath);
         void handleFileModify(int &socketDescr, std::string filename, std::string username);
-    
+        void handleFileDelete(int socketDesct, std::string filename,
+                              std::string username);
     public: 
         void pushReplica(int replicaId, ServerAddress addr, int socketDescr);
         void popReplica(int replicaId);
@@ -31,6 +32,7 @@ class ReplicaManager {
         void sendAllReplicas(int &socketDescr);
         void sendAllFiles(int &socketDescr);
         void printReplicas() const;
+
         void notifyAllReplicas(FileOperation op, std::string username);
         std::vector<ServerAddress> getReplicas();
         ServerAddress getNextReplica(ServerAddress currentAddress);

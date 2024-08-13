@@ -55,7 +55,7 @@ void ReplicaThread::getServerUpdates(ReplicaManager* replicaManager, int replica
             }
         }
     } catch (BrokenPipe) {
-
+        std::cout << "aaaa\n";
     }
     close(primarySock);
 }
@@ -170,6 +170,7 @@ void ReplicaThread::getDirFiles(int socketDescr, std::string dirName) {
 }
 
 void ReplicaThread::handleFileOp(int socketDescr) {
+    std::cout << "Got file op\n";
     sendOk(socketDescr);
 
     FileOpType opType = receiveFileOperation(socketDescr);
@@ -180,34 +181,18 @@ void ReplicaThread::handleFileOp(int socketDescr) {
             handleModify(socketDescr);
             break;
         
+        case FileOpType::FILE_DELETE:
+            handleFileDelete(socketDescr);
+            break;
+
         default:
+            std::cout << "Unknown file op\n";
             break;
     }
-    // try {
-    //     sendOk(socketDescr);
-
-    //     opType = receiveFileOperation(socketDescr);
-
-    //     switch (opType)
-    //     {
-    //         case FileOpType::FILE_MODIFY:
-    //             handleModify(socketDescr);
-    //             break;
-    //         case FileOpType::FILE_DELETE:
-    //             break;
-    //         default:
-    //             break;
-    //     }
-    // } catch (UnexpectedMsgType) {
-    //     std::cout << "Unexpected response.\n";
-    //     return;
-    // } catch (ErrorReply e) {
-    //     std::cout << "Error: " << e.what() << "\n";
-    //     return;
-    // }
 }
 
 void ReplicaThread::handleModify(int socketDescr) {
+    std::cout << "File change\n";
     sendOk(socketDescr);
 
     DirData dirData = receiveDirName(socketDescr);
@@ -215,61 +200,39 @@ void ReplicaThread::handleModify(int socketDescr) {
     std::filesystem::path baseDir(dirName.c_str());
     std::filesystem::create_directories(baseDir);
 
-    std::cout << dirName << "\n";
     sendOk(socketDescr);
 
     FileId fileId = receiveFileId(socketDescr);
     std::string filename(fileId.filename, fileId.filenameSize);
-    std::cout << "Got updates on file" << filename << "\n";
 
     std::ofstream file(baseDir / filename, std::fstream::binary);
 
     if (file) {
         sendOk(socketDescr);
     } else {
-        std::cout << "error\n";
         sendError(socketDescr, "Could not create file");
         return;
     }
     receiveFileData(socketDescr, fileId.totalBlocks, file);
     sendOk(socketDescr);
 
-    
-    std::cout << "Got updates on file" << filename << " SUCCESS\n";
-    // FileId fileId;
-    // DirData dirData;
-    // std::string dirName;
-    
-    // try {
-    //     sendOk(socketDescr);
+}
 
-    //     dirData = receiveDirName(socketDescr);
-    //     std::string dirName(dirData.dirName, dirData.dirnameLen);
-    //     std::cout << dirName << std::endl;
-    //     std::filesystem::path baseDir(dirName.c_str());
-    //     sendOk(socketDescr);
-        
-    //     fileId = receiveFileId(socketDescr);
-    //     std::string filename(fileId.filename, fileId.filenameSize);
-    //     std::ofstream file(baseDir/ filename, std::fstream::binary);
-        
-    //     if (file) {
-    //         sendOk(socketDescr);
-    //         std::cout << "aqui" << std::endl;
-    //     } else {
-    //         sendError(socketDescr, "Could not create file");
-    //     }
-        
-    //     receiveFileData(socketDescr, fileId.totalBlocks, file);
-    //     sendOk(socketDescr);
-        
-    // } catch (UnexpectedMsgType) {
-    //     std::cout << "Unexpected response.\n";
-    //     return;
-    // } catch (ErrorReply e) {
-    //     std::cout << "Error: " << e.what() << "\n";
-    //     return;
-    // }
+void ReplicaThread::handleFileDelete(int socketDescr) {
+    std::cout << "File deletion\n";
+    sendOk(socketDescr);
+
+    DirData dirData = receiveDirName(socketDescr);
+    std::string dirName(dirData.dirName, dirData.dirnameLen);
+    std::filesystem::path baseDir(dirName.c_str());
+
+    FileId fileId = receiveFileId(socketDescr);
+    std::string filename(fileId.filename, fileId.filenameSize);
+
+    std::cout << "Deleting file " << filename << "\n";
+
+    std::filesystem::remove(baseDir / filename);
+    sendOk(socketDescr);
 }
 
 
