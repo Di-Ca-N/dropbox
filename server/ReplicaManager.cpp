@@ -9,16 +9,19 @@
 
 
 void ReplicaManager::pushReplica(int replicaId, ServerAddress replicaAddr, int socketDescr) {
+    std::lock_guard<std::mutex> lock(mutex);
     replicas[replicaId] = {replicaId, replicaAddr, socketDescr};
 }
 
 void ReplicaManager::popReplica(int replicaId) {
+    std::lock_guard<std::mutex> lock(mutex);
     if(replicas.find(replicaId) != replicas.end()) {
         replicas.erase(replicaId);
     }
 }
 
 std::vector<ServerAddress> ReplicaManager::getReplicas() {
+    std::lock_guard<std::mutex> lock(mutex);
     std::vector<ServerAddress> replicaAddrs;
     for (auto &[id, replica] : replicas) {
         replicaAddrs.push_back(replica.replicaAddr);
@@ -27,6 +30,8 @@ std::vector<ServerAddress> ReplicaManager::getReplicas() {
 }
 
 ServerAddress ReplicaManager::getNextReplica(ServerAddress currentAddress) {
+    std::lock_guard<std::mutex> lock(mutex);
+
     std::vector<ServerAddress> replicaAddrs = this->getReplicas();
     for (int i = 0; i < replicaAddrs.size(); i++) {
         if (replicaAddrs[i] == currentAddress) {
@@ -38,6 +43,8 @@ ServerAddress ReplicaManager::getNextReplica(ServerAddress currentAddress) {
 }
 
 void ReplicaManager::updateReplica(int replicaId, UpdateType updateType) {
+    std::lock_guard<std::mutex> lock(mutex);
+
     for (const auto& pair : replicas) {
         const Replica& replica = pair.second;
         try {
@@ -76,7 +83,6 @@ void ReplicaManager::removeReplica(int replicaId, UpdateType updateType) {
 }
 
 void ReplicaManager::sendReplica(int socketDescr, int replicaId) {
-  
     replicaData.replicaId = replicaId;
     replicaData.replicaAddr = replicas[replicaId].replicaAddr;    
     replicaData.socketDescr = replicas[replicaId].socketDescr;
@@ -90,7 +96,6 @@ void ReplicaManager::sendReplica(int socketDescr, int replicaId) {
         std::cout << "Error: " << e.what() << "\n";
         return;
     }
-
 }
 
 
@@ -187,7 +192,6 @@ void ReplicaManager::createDir(int &socketDescr, std::string dirName) {
     }
 } 
 
-
 int ReplicaManager::countDirectories(const std::filesystem::path& baseDir) {
     int dirCount = 0;
 
@@ -229,6 +233,8 @@ int ReplicaManager::countFiles(const std::filesystem::path& baseDir) {
 }
 
 void ReplicaManager::notifyAllReplicas(FileOperation op, std::string username) {
+    std::lock_guard<std::mutex> lock(mutex);
+
     std::string fileName(op.filename, op.filenameSize);
     
     for (auto &replica : replicas) {

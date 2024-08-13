@@ -3,6 +3,7 @@
 #include <map>
 #include <cstdint>  
 #include <vector>
+#include <mutex>
 
 #include "Messages.hpp"
 
@@ -14,6 +15,8 @@ struct Replica {
 
 class ReplicaManager {
     private:
+        std::mutex mutex;
+
         std::map<int, Replica> replicas;
         ReplicaData replicaData;
         void sendReplica(int socketDescr, int replicaId);
