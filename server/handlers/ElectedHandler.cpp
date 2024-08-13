@@ -3,12 +3,11 @@
 #include "Messages.hpp"
 #include "utils.hpp"
 
-ElectedHandler::ElectedHandler(int replicaSocket, int myId, ServerAddress myAddress, ReplicaManager *replicaManager, ElectionManager *manager) {
+ElectedHandler::ElectedHandler(int replicaSocket, int myId, ReplicaManager *replicaManager, ElectionManager *manager) {
     this->replicaSocket = replicaSocket;
     this->id = myId;
     this->replicaManager = replicaManager;
     this->electionManager = manager;
-    this->myAddr = myAddress;
 }
 
 void ElectedHandler::run() {
@@ -27,7 +26,7 @@ void ElectedHandler::run() {
             return;
         }
 
-        ServerAddress nextServerAddr = replicaManager->getNextReplica(myAddr);
+        ServerAddress nextServerAddr = replicaManager->getNextReplica();
         int nextServer = openSocketTo(nextServerAddr);
         if (nextServer == -1) {
             std::cout << "Could not connect to next server on ring\n";

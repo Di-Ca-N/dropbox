@@ -34,7 +34,6 @@ std::mutex userRegisterMutex;
 ReplicaManager replicaManager;
 ElectionManager *electionManager;
 
-ServerAddress myAddress = {.ip=16777343};
 int myId;
 
 
@@ -140,11 +139,11 @@ void handleReplica(int replicaSocket, sockaddr_in replicaAddr, AuthData authData
                 return;
 
             case MsgType::MSG_ELECTION:
-                ElectionHandler(replicaSocket, myAddress, myId, replicaManager.getNextReplica(myAddress), electionManager).run();
+                ElectionHandler(replicaSocket, myId, electionManager, &replicaManager).run();
                 break;
 
             case MsgType::MSG_ELECTED:
-                ElectedHandler(replicaSocket, myId, myAddress, &replicaManager, electionManager).run();
+                ElectedHandler(replicaSocket, myId, &replicaManager, electionManager).run();
                 break;
 
             default:
@@ -174,17 +173,18 @@ void handleConnection(int remoteSocket, sockaddr_in remoteAddr) {
 }
 
 
-void startReplicationThread(ServerAddress primaryAddr){
-    replicaManager = ReplicaManager();
+void startReplicationThread(ServerAddress primaryAddr, uint16_t port){
     ReplicaThread replicaThread;
-    replicaThread.run(&replicaManager, myId, myAddress.port, primaryAddr);
+    replicaThread.run(&replicaManager, myId, port, primaryAddr);
 }
 
-void electionMonitor(ServerAddress primaryAddr) {
+void electionMonitor(ServerAddress primaryAddr, uint16_t port) {
     AuthData authData = {
         .type=AuthType::AUTH_REPLICA,
         .replicaData={
-            .replicaAddr=myAddress,
+            .replicaAddr={
+                .port=port
+            },
             .replicaId=myId,
         }
     };
@@ -210,7 +210,7 @@ void electionMonitor(ServerAddress primaryAddr) {
         } catch (BrokenPipe) {
             std::cout << "Primary died. Starting election.\n";
 
-            ServerAddress nextServerAddr = replicaManager.getNextReplica(myAddress);
+            ServerAddress nextServerAddr = replicaManager.getNextReplica();
             std::cout << "Connecting to next replica " << nextServerAddr << "\n";
             int nextServer = openSocketTo(nextServerAddr);
             if (nextServer == -1) {
@@ -226,7 +226,7 @@ void electionMonitor(ServerAddress primaryAddr) {
                 waitConfirmation(nextServer);
 
                 Ballot ballot = {
-                    .address=myAddress,
+                    .address=replicaManager.getAddress(),
                     .id=myId
                 };
                 sendBallot(nextServer, ballot);
@@ -243,14 +243,12 @@ void electionMonitor(ServerAddress primaryAddr) {
         electionManager->waitElectionEnd();
 
         std::cout << "New leader set to " << electionManager->getLeaderAddress() << "\n";
-        // Wait for the election to end 
+        replicaManager.clearReplicas();
+
         if (electionManager->getLeader() != myId) {
             std::cout << "Connecting to the new leader\n";
-            startReplicationThread(electionManager->getLeaderAddress());
-        } else {
-            replicaManager = ReplicaManager();
+            startReplicationThread(electionManager->getLeaderAddress(), port);
         }
-
     }
 }
 
@@ -270,10 +268,12 @@ int main(int argc, char *argv[]) {
     int optVal = 1;
     setsockopt(sock_fd, 1, SO_REUSEADDR, &optVal, sizeof(optVal));
 
+    uint16_t myPort = htons(atoi(argv[1]));
+
     // Binding do socket na porta 8000
     sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(atoi(argv[1]));
+    addr.sin_port = myPort;
     addr.sin_addr.s_addr = INADDR_ANY;
     int err;
     err = bind(sock_fd, (sockaddr*) &addr, sizeof(addr));
@@ -291,15 +291,16 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Server listening on port " << argv[1] << "\n";
 
+    
+    
     if (argc == 5) {
-        uint16_t port = htons(atoi(argv[3]));
-        myAddress.port = htons(atoi(argv[1]));
+        uint16_t primaryPort = htons(atoi(argv[3]));    
         myId = std::stoi(argv[4]);
         ServerAddress primaryAddr;
         inet_pton(AF_INET, argv[2], &primaryAddr.ip);
-        primaryAddr.port = port;
-        startReplicationThread(primaryAddr);
-        std::thread(electionMonitor, primaryAddr).detach();
+        primaryAddr.port = primaryPort;
+        startReplicationThread(primaryAddr, myPort);
+        std::thread(electionMonitor, primaryAddr, myPort).detach();
     }
 
     std::vector<std::thread> openConnections;

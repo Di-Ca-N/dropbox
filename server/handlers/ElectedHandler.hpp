@@ -7,11 +7,10 @@
 class ElectedHandler : public Handler {
     private:
         int replicaSocket;
-        ServerAddress myAddr;
         int id;
         ElectionManager *electionManager;
         ReplicaManager *replicaManager;
     public:
-        ElectedHandler(int replicaSocket, int myId, ServerAddress myAddr, ReplicaManager *replicaManager, ElectionManager *manager);
+        ElectedHandler(int replicaSocket, int myId, ReplicaManager *replicaManager, ElectionManager *manager);
         void run();
 };

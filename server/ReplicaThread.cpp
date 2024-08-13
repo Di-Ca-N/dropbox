@@ -18,9 +18,11 @@ void ReplicaThread::getServerUpdates(ReplicaManager* replicaManager, int replica
             .replicaId=replicaId
         }
     };
+
     try {
         sendAuth(primarySock, authData);
-        receiveAuth(primarySock);
+        AuthData authResponse = receiveAuth(primarySock);
+        replicaManager->setAddress(authResponse.replicaData.replicaAddr);
 
         sendMessage(primarySock, MsgType::MSG_REPLICATION, nullptr, 0);
         waitConfirmation(primarySock);
@@ -55,7 +57,7 @@ void ReplicaThread::getServerUpdates(ReplicaManager* replicaManager, int replica
             }
         }
     } catch (BrokenPipe) {
-        std::cout << "aaaa\n";
+        
     }
     close(primarySock);
 }

@@ -20,8 +20,12 @@ void ReplicaManager::popReplica(int replicaId) {
     }
 }
 
-std::vector<ServerAddress> ReplicaManager::getReplicas() {
+void ReplicaManager::clearReplicas() {
     std::lock_guard<std::mutex> lock(mutex);
+    replicas.clear();
+}
+
+std::vector<ServerAddress> ReplicaManager::getReplicas() {
     std::vector<ServerAddress> replicaAddrs;
     for (auto &[id, replica] : replicas) {
         replicaAddrs.push_back(replica.replicaAddr);
@@ -29,12 +33,12 @@ std::vector<ServerAddress> ReplicaManager::getReplicas() {
     return replicaAddrs;
 }
 
-ServerAddress ReplicaManager::getNextReplica(ServerAddress currentAddress) {
+ServerAddress ReplicaManager::getNextReplica() {
     std::lock_guard<std::mutex> lock(mutex);
 
     std::vector<ServerAddress> replicaAddrs = this->getReplicas();
     for (int i = 0; i < replicaAddrs.size(); i++) {
-        if (replicaAddrs[i] == currentAddress) {
+        if (replicaAddrs[i] == myAddress) {
             int nextIdx = (i + 1) % replicaAddrs.size();
             return replicaAddrs[nextIdx];
         }
@@ -314,3 +318,12 @@ void ReplicaManager::printReplicas() const {
     }
 }
 
+void ReplicaManager::setAddress(ServerAddress address) {
+    std::lock_guard<std::mutex> lock(mutex);
+    this->myAddress = address;
+}
+
+ServerAddress ReplicaManager::getAddress() {
+    std::lock_guard<std::mutex> lock(mutex); 
+    return myAddress; 
+}

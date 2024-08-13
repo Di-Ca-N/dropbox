@@ -6,14 +6,12 @@
 #include "utils.hpp"
 
 ElectionHandler::ElectionHandler(
-        int replicaSocket, ServerAddress myAddress, int myId, 
-        ServerAddress nextAddress, ElectionManager *manager
+        int replicaSocket, int myId, ElectionManager *electionManager, ReplicaManager *replicaManager
 ) {
     this->replicaSocket = replicaSocket;
-    this->myAddress = myAddress;
     this->myId = myId;
-    this->nextAddress = nextAddress;
-    this->manager = manager;
+    this->electionManager = electionManager;
+    this->replicaManager = replicaManager;
 }
 
 void ElectionHandler::run() {
@@ -24,11 +22,11 @@ void ElectionHandler::run() {
         sendOk(replicaSocket);
 
         // Notify next server about the election
-        int nextServer = openSocketTo(nextAddress);
+        int nextServer = openSocketTo(replicaManager->getNextReplica());
         AuthData authData = {
             .type=AuthType::AUTH_REPLICA, 
             .replicaData = {
-                .replicaAddr=myAddress,
+                .replicaAddr=replicaManager->getAddress(),
                 .replicaId=myId
             }
         };
@@ -45,7 +43,7 @@ void ElectionHandler::run() {
         } else if (this->myId > ballot.id) {
             std::cout << "Forwarding ballot\n";
             ballot.id = myId;
-            ballot.address = myAddress;
+            ballot.address = replicaManager->getAddress();
             sendMessage(nextServer, MsgType::MSG_ELECTION, nullptr, 0);
             waitConfirmation(nextServer);
             sendBallot(nextServer, ballot);
