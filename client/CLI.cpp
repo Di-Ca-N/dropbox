@@ -13,11 +13,10 @@ void CLI::run(std::string username, std::string ip, int port) {
     bool newLine;
     struct pollfd cinFd;
 
-    if (!makeConnection(username, ip, port)) {
-        return;
-    }
+    makeConnection(username, ip, port);
     makeHistory();
     startClientState(AppState::STATE_UNTRACKED);
+    initializeHeartbeatMonitor();
     initializeCommandParser();
     initializeSyncDir();
 
@@ -36,13 +35,23 @@ void CLI::run(std::string username, std::string ip, int port) {
         }
     }
 
+    heartbeatThread.join();
     serverThread.join();
     clientThread.join();
 }
 
-bool CLI::makeConnection(std::string username, std::string ip, int port) {
+void CLI::makeConnection(std::string username, std::string ip, int port) {
     connection = std::make_shared<Connection>(Connection());
-    return connection->connectToServer(username, ip, port);
+    
+    while (true) {
+        try {
+            connection->connectToService(username, ip, port);
+        } catch (BinderConnectionError) {
+            continue;
+        } catch (...) {}
+
+        break;
+    }
 }
 
 void CLI::makeHistory() {
@@ -56,6 +65,20 @@ void CLI::startClientState(AppState state) {
 void CLI::printPrompt() {
     std::cout << "> ";
     std::cout.flush();
+}
+
+void CLI::initializeHeartbeatMonitor() {
+    heartbeatMonitor = std::make_unique<HeartbeatMonitor>(
+            HeartbeatMonitor(
+                clientState,
+                connection
+            )
+    );
+
+    heartbeatThread = std::thread(
+            &HeartbeatMonitor::run,
+            std::ref(*heartbeatMonitor)
+    );
 }
 
 void CLI::initializeCommandParser() {
@@ -76,7 +99,17 @@ void CLI::initializeSyncDir() {
             std::weak_ptr(clientState),
             std::weak_ptr(connection)
     );
-    cmd.execute();
+    try {
+        cmd.execute();
+    } catch (ServerConnectionError) {
+        std::cout << "Service is offline. Please, try again later.\n";
+    } catch (BrokenPipe) {
+        std::cout << "Service is offline. Please, try again later.\n";
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
+    }
 }
 
 void CLI::parseCommand(bool &newLine) {
@@ -86,8 +119,20 @@ void CLI::parseCommand(bool &newLine) {
     try {
         std::unique_ptr<Command> command = commandParser->parse(line);
         command->execute();
-    } catch(const std::exception& e) {
-        std::cerr << e.what() << std::endl;
+    } catch (NoCommandException &e) {
+        std::cout << e.what() << "\n";
+    } catch (InvalidCommandException &e) {
+        std::cout << e.what() << "\n";
+    } catch (InvalidArgumentException &e) {
+        std::cout << e.what() << "\n";
+    } catch (ServerConnectionError) {
+        std::cout << "Service is offline. Please, try again later.\n";
+    } catch (BrokenPipe) {
+        std::cout << "Service is offline. Please, try again later.\n";
+    } catch (ErrorReply e) {
+        std::cout << "Error: " << e.what() << "\n";
+    } catch (UnexpectedMsgType) {
+        std::cout << "Unexpected response\n";
     }
 }
 

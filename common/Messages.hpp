@@ -17,32 +17,32 @@
 
 enum class MsgType : u_int8_t {
     MSG_AUTH,
+    MSG_BALLOT,
+    MSG_DELETE,
+    MSG_DIR_NAME,
+    MSG_DOWNLOAD,
+    MSG_ELECTED,
+    MSG_ELECTION,
+    MSG_ERROR,
+    MSG_FILEPART,
+    MSG_FILE_ID,
+    MSG_FILE_METADATA,
+    MSG_FILE_OPERATION,
+    MSG_HEARTBEAT,
+    MSG_LIST_SERVER,
+    MSG_NUM_FILES,
+    MSG_OK,
+    MSG_REPLICA_DATA,
+    MSG_REPLICA_ID,
+    MSG_REPLICA_SYNC,
+    MSG_REPLICATION,
+    MSG_SERVER_ADDRESS,
+    MSG_SERVICE_STATUS,
+    MSG_STATUS_INQUIRY,
     MSG_SYNC_CLIENT_TO_SERVER,
     MSG_SYNC_SERVER_TO_CLIENT,
     MSG_UPLOAD,
-    MSG_DOWNLOAD,
-    MSG_DELETE,
-    MSG_LIST_SERVER,
-    MSG_FILE_ID,
-    MSG_FILEPART,
-    MSG_FILE_OPERATION,
-    MSG_NUM_FILES,
-    MSG_FILE_METADATA,
-    MSG_STATUS_INQUIRY,
-    MSG_SERVICE_STATUS,
-    MSG_SERVER_ADDRESS,
-    MSG_HEARTBEAT,
-    MSG_REPLICA_SYNC,
     MSG_UPDATE_TYPE,
-    MSG_REPLICA_DATA,
-    MSG_REPLICA_ID,
-    MSG_ELECTION,
-    MSG_ELECTED,
-    MSG_BALLOT,
-    MSG_DIR_NAME,
-    MSG_OK,
-    MSG_ERROR,
-    MSG_REPLICATION
 };
 
 // Helper function to get a string representation of MsgType
@@ -178,8 +178,6 @@ void sendFileMeta(int sock_fd, FileMeta meta);
 FileMeta receiveFileMeta(int sock_fd);
 void sendFileOperation(int sock_fd, FileOpType type);
 FileOpType receiveFileOperation(int sock_fd);
-void sendServiceStatus(int sock_fd, ServiceStatus status);
-ServiceStatus receiveServiceStatus(int sock_fd);
 void sendServerAddress(int sock_fd, ServerAddress address);
 ServerAddress receiveServerAddress(int sock_fd);
 void sendHeartbeat(int sock_fd);

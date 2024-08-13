@@ -5,6 +5,7 @@
 #include <string>
 #include <stdexcept>
 #include <sys/inotify.h>
+#include <queue>
 
 #include "ClientState.hpp"
 #include "Connection.hpp"
@@ -15,12 +16,14 @@ class ClientMonitor {
     std::shared_ptr<Connection> connection;
     std::shared_ptr<EventHistory> history;
 
+    std::queue<FileOperation> queue = std::queue<FileOperation>();
+
     void watchEvents(int inotifyFd, int bitMask, std::string syncDir);
     void setNonBlocking(int inotifyFd);
     void processEventBuffer(unsigned char buffer[], int bytesRead);
     bool fileIsTemporary(char* name, int len);
     void removeTrailingZeros(std::string &str);
-    void sendOperationIfNotDuplicated(FileOpType opType, inotify_event *event);
+    void sendOperationIfNotDuplicated(FileOperation &operation);
     FileOperation makeFileOperation(FileOpType opType, char *fileName, size_t nameLength);
     int startEventTracking();
 public:

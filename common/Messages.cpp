@@ -10,24 +10,31 @@
 
 std::map<MsgType, std::string> msgTypeNames = {
     {MsgType::MSG_AUTH, "MSG_AUTH"},
-    {MsgType::MSG_SYNC_CLIENT_TO_SERVER, "MSG_SYNC_CLIENT_TO_SERVER"},
-    {MsgType::MSG_SYNC_SERVER_TO_CLIENT, "MSG_SYNC_SERVER_TO_CLIENT"},
-    {MsgType::MSG_OK, "MSG_OK"},
-    {MsgType::MSG_ERROR, "MSG_ERROR"},
-    {MsgType::MSG_UPLOAD, "MSG_UPLOAD"},
+    {MsgType::MSG_BALLOT, "MSG_BALLOT"},
+    {MsgType::MSG_DELETE, "MSG_DELETE"},
+    {MsgType::MSG_DIR_NAME, "MSG_DIR_NAME"},
     {MsgType::MSG_DOWNLOAD, "MSG_DOWNLOAD"},
-    {MsgType::MSG_LIST_SERVER, "MSG_LIST_SERVER"},
-    {MsgType::MSG_FILE_ID, "MSG_FILE_ID"},
+    {MsgType::MSG_ELECTED, "MSG_ELECTED"},
+    {MsgType::MSG_ELECTION, "MSG_ELECTION"},
+    {MsgType::MSG_ERROR, "MSG_ERROR"},
     {MsgType::MSG_FILEPART, "MSG_FILEPART"},
-    {MsgType::MSG_FILE_OPERATION, "MSG_FILE_OPERATION"},
-    {MsgType::MSG_NUM_FILES, "MSG_NUM_FILES"},
+    {MsgType::MSG_FILE_ID, "MSG_FILE_ID"},
     {MsgType::MSG_FILE_METADATA, "MSG_FILE_METADATA"},
-    {MsgType::MSG_STATUS_INQUIRY, "MSG_STATUS_INQUIRY"},
-    {MsgType::MSG_SERVICE_STATUS, "MSG_SERVICE_STATUS"},
-    {MsgType::MSG_SERVER_ADDRESS, "MSG_SERVER_ADDRESS"},
+    {MsgType::MSG_FILE_OPERATION, "MSG_FILE_OPERATION"},
     {MsgType::MSG_HEARTBEAT, "MSG_HEARTBEAT"},
+    {MsgType::MSG_LIST_SERVER, "MSG_LIST_SERVER"},
+    {MsgType::MSG_NUM_FILES, "MSG_NUM_FILES"},
+    {MsgType::MSG_OK, "MSG_OK"},
     {MsgType::MSG_REPLICA_DATA, "MSG_REPLICA_DATA"},
     {MsgType::MSG_REPLICA_ID, "MSG_REPLICA_ID"},
+    {MsgType::MSG_REPLICA_SYNC, "MSG_REPLICA_SYNC"},
+    {MsgType::MSG_REPLICATION, "MSG_REPLICATION"},
+    {MsgType::MSG_SERVER_ADDRESS, "MSG_SERVER_ADDRESS"},
+    {MsgType::MSG_SERVICE_STATUS, "MSG_SERVICE_STATUS"},
+    {MsgType::MSG_STATUS_INQUIRY, "MSG_STATUS_INQUIRY"},
+    {MsgType::MSG_SYNC_CLIENT_TO_SERVER, "MSG_SYNC_CLIENT_TO_SERVER"},
+    {MsgType::MSG_SYNC_SERVER_TO_CLIENT, "MSG_SYNC_SERVER_TO_CLIENT"},
+    {MsgType::MSG_UPLOAD, "MSG_UPLOAD"},
     {MsgType::MSG_UPDATE_TYPE, "MSG_UPDATE_TYPE"},
 };
 
@@ -213,14 +220,6 @@ void sendFileOperation(int sock_fd, FileOpType opType) {
 
 FileOpType receiveFileOperation(int sock_fd) {
     return receivePayload<FileOpType>(sock_fd, MsgType::MSG_FILE_OPERATION);
-}
-
-void sendServiceStatus(int sock_fd, ServiceStatus status) {
-    sendMessage(sock_fd, MsgType::MSG_SERVICE_STATUS, &status, sizeof(status));
-}
-
-ServiceStatus receiveServiceStatus(int sock_fd) {
-    return receivePayload<ServiceStatus>(sock_fd, MsgType::MSG_SERVICE_STATUS);
 }
 
 void sendServerAddress(int sock_fd, ServerAddress address) {

@@ -22,6 +22,7 @@ void Upload::execute() {
     std::shared_ptr<Connection> sharedPtr;
     if ((sharedPtr = connection.lock()))
         sharedPtr->upload(target);
+    std::cout << "Upload successful!\n";
 }
 
 Download::Download(std::weak_ptr<Connection> connection,
@@ -34,6 +35,7 @@ void Download::execute() {
     std::shared_ptr<Connection> sharedPtr;
     if ((sharedPtr = connection.lock()))
         sharedPtr->download(target);
+    std::cout << "Download successful\n";
 }
 
 Delete::Delete(std::weak_ptr<Connection> connection,
@@ -46,6 +48,7 @@ void Delete::execute() {
     std::shared_ptr<Connection> sharedPtr;
     if ((sharedPtr = connection.lock()))
         sharedPtr->delete_(target);
+    std::cout << "File deleted successfully\n";
 }
 
 ListServer::ListServer(std::weak_ptr<Connection> connection) {
