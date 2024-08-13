@@ -25,11 +25,13 @@ add_executable(server
     server/handlers/ReplicaConnectionHandler.cpp
     server/handlers/ElectionHandler.cpp
     server/handlers/ElectedHandler.cpp
+    server/handlers/BinderHandler.cpp
     server/SyncQueue.cpp
     server/DeviceManager.cpp
     server/ReplicaThread.cpp
     server/ReplicaManager.cpp
     server/ElectionManager.cpp
+    server/BinderManager.cpp
     common/Messages.cpp
     common/utils.cpp
 )

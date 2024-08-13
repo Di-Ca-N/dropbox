@@ -19,7 +19,7 @@ void ElectedHandler::run() {
 
         if (ballot.id == electionManager->getLeader()) return;
 
-        electionManager->setLeader(ballot.id, ballot.address);
+        electionManager->setLeader(id, ballot.id, ballot.address);
         
         if (ballot.id == this->id) {
             electionManager->finishElection();

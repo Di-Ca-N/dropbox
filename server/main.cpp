@@ -25,6 +25,7 @@
 #include "ReplicaThread.hpp"
 #include "ReplicaManager.hpp"
 #include "ElectionManager.hpp"
+#include "BinderManager.hpp"
 #include "utils.hpp"
 
 #define MAX_USER_DEVICES 2
@@ -33,6 +34,7 @@ std::map<std::string, DeviceManager*> deviceManagers;
 std::mutex userRegisterMutex;
 ReplicaManager replicaManager;
 ElectionManager *electionManager;
+BinderManager *binderManager;
 
 int myId;
 
@@ -189,7 +191,7 @@ void electionMonitor(ServerAddress primaryAddr, uint16_t port) {
         }
     };
 
-    electionManager = new ElectionManager(0, primaryAddr);
+    electionManager = new ElectionManager(binderManager, myId, 0, primaryAddr);
 
     while (electionManager->getLeader() != myId) {
         try {
@@ -253,8 +255,8 @@ void electionMonitor(ServerAddress primaryAddr, uint16_t port) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 4 && argc != 7) {
-        fprintf(stderr, "Usage: server <server-port> <binder-ip> <binder-port> [<primary-ip> <primary-port> <id>]\n");
+    if (argc != 5 && argc != 8) {
+        fprintf(stderr, "Usage: server <server-ip> <server-port> <binder-ip> <binder-port> [<primary-ip> <primary-port> <id>]\n");
         return 1;
     }
 
@@ -268,7 +270,7 @@ int main(int argc, char *argv[]) {
     int optVal = 1;
     setsockopt(sock_fd, 1, SO_REUSEADDR, &optVal, sizeof(optVal));
 
-    uint16_t myPort = htons(atoi(argv[1]));
+    uint16_t myPort = htons(atoi(argv[2]));
 
     // Binding do socket na porta 8000
     sockaddr_in addr;
@@ -279,7 +281,7 @@ int main(int argc, char *argv[]) {
     err = bind(sock_fd, (sockaddr*) &addr, sizeof(addr));
 
     if (err == -1) {
-        fprintf(stderr, "Could not bind to port %s\n", argv[1]);
+        fprintf(stderr, "Could not bind to port %s\n", argv[2]);
         return 1;
     }
 
@@ -289,18 +291,26 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    std::cout << "Server listening on port " << argv[1] << "\n";
+    std::cout << "Server listening on port " << argv[2] << "\n";
 
+    ServerAddress binderAddress;
+    inet_pton(AF_INET, argv[3], &binderAddress.ip);
+    binderAddress.port = htons(atoi(argv[4]));
+    binderManager = new BinderManager(binderAddress); 
     
-    
-    if (argc == 5) {
-        uint16_t primaryPort = htons(atoi(argv[5]));    
-        myId = std::stoi(argv[6]);
+    if (argc == 8) {
+        uint16_t primaryPort = htons(atoi(argv[6]));    
+        myId = std::stoi(argv[7]);
         ServerAddress primaryAddr;
-        inet_pton(AF_INET, argv[4], &primaryAddr.ip);
+        inet_pton(AF_INET, argv[5], &primaryAddr.ip);
         primaryAddr.port = primaryPort;
         startReplicationThread(primaryAddr, myPort);
         std::thread(electionMonitor, primaryAddr, myPort).detach();
+    } else {
+        ServerAddress myAddr;
+        inet_pton(AF_INET, argv[1], &myAddr.ip);
+        myAddr.port = htons(atoi(argv[2]));
+        binderManager->notifyBinder(myAddr);
     }
 
     std::vector<std::thread> openConnections;

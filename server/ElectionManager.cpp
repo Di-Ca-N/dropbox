@@ -3,8 +3,9 @@
 #include "Messages.hpp"
 #include <iostream>
 
-ElectionManager::ElectionManager(int leaderId, ServerAddress leaderAddress) {
-    setLeader(leaderId, leaderAddress);
+ElectionManager::ElectionManager(BinderManager *binderManager, int myId, int leaderId, ServerAddress leaderAddress) {
+    this->binderManager = binderManager;
+    setLeader(myId, leaderId, leaderAddress);
 }
 
 int ElectionManager::getLeader() {
@@ -15,10 +16,13 @@ ServerAddress ElectionManager::getLeaderAddress() {
     return this->leaderAddr;
 }
 
-void ElectionManager::setLeader(int leaderId, ServerAddress leaderAddress) {
+void ElectionManager::setLeader(int myId, int leaderId, ServerAddress leaderAddress) {
     this->leaderId = leaderId;
     this->leaderAddr = leaderAddress;
-    // ToDo: Notify nameserver about new primary
+
+    if (leaderId == myId) {
+        binderManager->notifyBinder(leaderAddress); 
+    }
 }
 
 void ElectionManager::finishElection() {
