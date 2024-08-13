@@ -253,8 +253,8 @@ void electionMonitor(ServerAddress primaryAddr, uint16_t port) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 2 && argc != 5) {
-        fprintf(stderr, "Usage: server <port>\n");
+    if (argc != 4 && argc != 7) {
+        fprintf(stderr, "Usage: server <server-port> <binder-ip> <binder-port> [<primary-ip> <primary-port> <id>]\n");
         return 1;
     }
 
@@ -294,10 +294,10 @@ int main(int argc, char *argv[]) {
     
     
     if (argc == 5) {
-        uint16_t primaryPort = htons(atoi(argv[3]));    
-        myId = std::stoi(argv[4]);
+        uint16_t primaryPort = htons(atoi(argv[5]));    
+        myId = std::stoi(argv[6]);
         ServerAddress primaryAddr;
-        inet_pton(AF_INET, argv[2], &primaryAddr.ip);
+        inet_pton(AF_INET, argv[4], &primaryAddr.ip);
         primaryAddr.port = primaryPort;
         startReplicationThread(primaryAddr, myPort);
         std::thread(electionMonitor, primaryAddr, myPort).detach();
