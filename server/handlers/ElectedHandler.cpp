@@ -20,30 +20,29 @@ void ElectedHandler::run() {
         if (ballot.id == electionManager->getLeader()) return;
 
         electionManager->setLeader(id, ballot.id, ballot.address);
-        
-        if (ballot.id == this->id) {
+
+        if (ballot.id != this->id) {
+            ServerAddress nextServerAddr = replicaManager->getNextReplica();
+            int nextServer = openSocketTo(nextServerAddr);
+            if (nextServer == -1) {
+                std::cout << "Could not connect to next server on ring\n";
+                return;
+            }
+            AuthData authData = {
+                .type=AuthType::AUTH_REPLICA,
+            };
+            sendAuth(nextServer, authData);
+            receiveAuth(nextServer);
+
+            sendMessage(nextServer, MsgType::MSG_ELECTED, nullptr, 0);
+            waitConfirmation(nextServer);
+
+            sendBallot(nextServer, ballot);
+            waitConfirmation(nextServer);
+
             electionManager->finishElection();
-            return;
         }
-
-        ServerAddress nextServerAddr = replicaManager->getNextReplica();
-        int nextServer = openSocketTo(nextServerAddr);
-        if (nextServer == -1) {
-            std::cout << "Could not connect to next server on ring\n";
-            return;
-        }
-        AuthData authData = {
-            .type=AuthType::AUTH_REPLICA,
-        };
-        sendAuth(nextServer, authData);
-        receiveAuth(nextServer);
-
-        sendMessage(nextServer, MsgType::MSG_ELECTED, nullptr, 0);
-        waitConfirmation(nextServer);
-
-        sendBallot(nextServer, ballot);
-        waitConfirmation(nextServer);
-
+        replicaManager->clearReplicas();
         electionManager->finishElection();
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";

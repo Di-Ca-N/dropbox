@@ -247,7 +247,6 @@ void electionMonitor(ServerAddress primaryAddr, uint16_t port) {
         electionManager->waitElectionEnd();
 
         std::cout << "New leader set to " << electionManager->getLeaderAddress() << "\n";
-        replicaManager.clearReplicas();
 
         if (electionManager->getLeader() != myId) {
             std::cout << "Connecting to the new leader\n";
