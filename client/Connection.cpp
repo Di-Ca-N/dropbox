@@ -57,25 +57,32 @@ void Connection::retryConnection() {
 }
 
 void Connection::connectToServer(in_addr_t &ip, in_port_t &port) {
+    deviceId = -1;
     if ((heartbeatSock = createSocket(ip, port)) == -1) {
         undoServerConnection();
         throw ServerConnectionError();
     }
+    authenticate(heartbeatSock, username);
 
     if ((commandSock = createSocket(ip, port)) == -1) {
         undoServerConnection();
         throw ServerConnectionError();
     }
+    authenticate(commandSock, username);
 
     if ((readSock = createSocket(ip, port)) == -1) {
         undoServerConnection();
         throw ServerConnectionError();
     }
+    authenticate(readSock, username);
+    setReadConnection();
 
     if ((writeSock = createSocket(ip, port)) == -1) {
         undoServerConnection();
         throw ServerConnectionError();
     }
+    authenticate(writeSock, username);
+    setWriteConnection(writeSock);
 }
 
 void Connection::undoServerConnection() {
@@ -95,6 +102,7 @@ void Connection::undoServerConnection() {
     commandSock = -1;
     readSock = -1;
     writeSock = -1;
+    deviceId = -1;
 }
 
 bool Connection::hearsHeartbeat(int timeout) {

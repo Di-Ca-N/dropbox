@@ -2,4 +2,4 @@
 
 #pragma once
 
-void handleClientConnection(int socket);
+void handleClientConnection(int socket, sockaddr_in clientAddr);

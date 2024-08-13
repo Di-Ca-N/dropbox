@@ -107,8 +107,8 @@ void CLI::initializeSyncDir() {
         std::cout << "Service is offline. Please, try again later.\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response\n";
+    } catch (UnexpectedMsgType e) {
+        std::cout << "Unexpected response 1" << e.what() << "\n";
     }
 }
 
@@ -131,8 +131,8 @@ void CLI::parseCommand(bool &newLine) {
         std::cout << "Service is offline. Please, try again later.\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response\n";
+    } catch (UnexpectedMsgType e) {
+        std::cout << "Unexpected response 2" << e.what() << "\n";
     }
 }
 

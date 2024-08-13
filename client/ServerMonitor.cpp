@@ -27,8 +27,8 @@ void ServerMonitor::run() {
         } catch (ErrorReply e) {
             std::cout << "Error: " << e.what() << "\n";
             continue;
-        } catch (UnexpectedMsgType) {
-            std::cout << "Unexpected response\n";
+        } catch (UnexpectedMsgType e) {
+            std::cout << "Unexpected response 5" << e.what() << "\n";
             continue;
         } catch (BrokenPipe) {
             continue;

@@ -64,6 +64,8 @@ void handleClient(int clientSocket, AuthData authData) {
             sendError(clientSocket, t.what());
         } catch (BrokenPipe) {}
 
+        close(clientSocket);
+
         return;
     }
 
@@ -255,8 +257,8 @@ void electionMonitor(ServerAddress primaryAddr, uint16_t port) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc != 5 && argc != 8) {
-        fprintf(stderr, "Usage: server <server-ip> <server-port> <binder-ip> <binder-port> [<primary-ip> <primary-port> <id>]\n");
+    if (argc != 4 && argc != 7) {
+        fprintf(stderr, "Usage: server <server-port> <binder-ip> <binder-port> [<primary-ip> <primary-port> <id>]\n");
         return 1;
     }
 
@@ -270,7 +272,7 @@ int main(int argc, char *argv[]) {
     int optVal = 1;
     setsockopt(sock_fd, 1, SO_REUSEADDR, &optVal, sizeof(optVal));
 
-    uint16_t myPort = htons(atoi(argv[2]));
+    uint16_t myPort = htons(atoi(argv[1]));
 
     // Binding do socket na porta 8000
     sockaddr_in addr;
@@ -281,7 +283,7 @@ int main(int argc, char *argv[]) {
     err = bind(sock_fd, (sockaddr*) &addr, sizeof(addr));
 
     if (err == -1) {
-        fprintf(stderr, "Could not bind to port %s\n", argv[2]);
+        fprintf(stderr, "Could not bind to port %s\n", argv[1]);
         return 1;
     }
 
@@ -291,25 +293,25 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    std::cout << "Server listening on port " << argv[2] << "\n";
+    std::cout << "Server listening on port " << argv[1] << "\n";
 
     ServerAddress binderAddress;
-    inet_pton(AF_INET, argv[3], &binderAddress.ip);
-    binderAddress.port = htons(atoi(argv[4]));
+    inet_pton(AF_INET, argv[2], &binderAddress.ip);
+    binderAddress.port = htons(atoi(argv[3]));
+    std::cout << "Connecting to binder at " << binderAddress << "\n";
     binderManager = new BinderManager(binderAddress); 
     
-    if (argc == 8) {
-        uint16_t primaryPort = htons(atoi(argv[6]));    
-        myId = std::stoi(argv[7]);
+    if (argc == 7) {
+        uint16_t primaryPort = htons(atoi(argv[5]));    
+        myId = std::stoi(argv[6]);
         ServerAddress primaryAddr;
-        inet_pton(AF_INET, argv[5], &primaryAddr.ip);
+        inet_pton(AF_INET, argv[4], &primaryAddr.ip);
         primaryAddr.port = primaryPort;
         startReplicationThread(primaryAddr, myPort);
         std::thread(electionMonitor, primaryAddr, myPort).detach();
     } else {
         ServerAddress myAddr;
-        inet_pton(AF_INET, argv[1], &myAddr.ip);
-        myAddr.port = htons(atoi(argv[2]));
+        myAddr.port = htons(atoi(argv[1]));
         binderManager->notifyBinder(myAddr);
     }
 
