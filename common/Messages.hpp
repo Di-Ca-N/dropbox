@@ -41,7 +41,8 @@ enum class MsgType : u_int8_t {
     MSG_BALLOT,
     MSG_DIR_NAME,
     MSG_OK,
-    MSG_ERROR
+    MSG_ERROR,
+    MSG_REPLICATION
 };
 
 // Helper function to get a string representation of MsgType
@@ -73,7 +74,15 @@ typedef struct {
 } FileOperation;
 
 // Struct to transfer file metadata
-typedef struct {
+typedef struct {        // switch (op.type) {
+        //     case FileOpType::FILE_DELETE:
+        //         break;
+        //     case FileOpType::FILE_MODIFY:
+        //         handleFileModify(replicaSock, fileName, username);
+        //         break;
+        //     default:
+        //         break;
+        // }
     char filename[MAX_FILENAME];
     time_t mTime;
     time_t aTime;
@@ -175,7 +184,6 @@ void sendServerAddress(int sock_fd, ServerAddress address);
 ServerAddress receiveServerAddress(int sock_fd);
 void sendHeartbeat(int sock_fd);
 void waitHeartbeat(int sock_fd, int maxTimeout);
-void sendUpdate(int sock_fd);
 void sendUpdateType(int sock_fd, UpdateType updateType);
 UpdateType receiveUpdateType(int sock_fd);
 void sendReplicaData(int sock_fd, ReplicaData replicaData);
