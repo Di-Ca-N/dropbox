@@ -43,14 +43,13 @@ void CLI::run(std::string username, std::string ip, int port) {
 void CLI::makeConnection(std::string username, std::string ip, int port) {
     connection = std::make_shared<Connection>(Connection());
     
-    while (true) {
-        try {
-            connection->connectToService(username, ip, port);
-        } catch (BinderConnectionError) {
-            continue;
-        } catch (...) {}
-
-        break;
+    try {
+        connection->connectToService(username, ip, port);
+    } catch (BinderConnectionError) {
+        std::cout << "Error when connecting to binder\n";
+        exit(1);
+    } catch (...) {
+        std::cout << "Error when establishing first connection\n";
     }
 }
 

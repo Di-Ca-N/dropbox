@@ -58,57 +58,60 @@ void Connection::retryConnection() {
 
 void Connection::connectToServer(in_addr_t &ip, in_port_t &port) {
     deviceId = -1;
-    if ((heartbeatSock = createSocket(ip, port)) == -1) {
-        undoServerConnection();
+
+    int newHeartbeatSock = -1;
+    int newCommandSock = -1;
+    int newReadSock = -1;
+    int newWriteSock = -1;
+
+    if ((newHeartbeatSock = createSocket(ip, port)) == -1) {
+        close(newHeartbeatSock);
         throw ServerConnectionError();
     }
-    authenticate(heartbeatSock, username);
 
-    if ((commandSock = createSocket(ip, port)) == -1) {
-        undoServerConnection();
+    if ((newCommandSock = createSocket(ip, port)) == -1) {
+        close(newHeartbeatSock);
+        close(newCommandSock);
         throw ServerConnectionError();
     }
-    authenticate(commandSock, username);
 
-    if ((readSock = createSocket(ip, port)) == -1) {
-        undoServerConnection();
+    if ((newReadSock = createSocket(ip, port)) == -1) {
+        close(newHeartbeatSock);
+        close(newCommandSock);
+        close(newReadSock);
         throw ServerConnectionError();
     }
-    authenticate(readSock, username);
-    setReadConnection();
 
-    if ((writeSock = createSocket(ip, port)) == -1) {
-        undoServerConnection();
+    if ((newWriteSock = createSocket(ip, port)) == -1) {
+        close(newHeartbeatSock);
+        close(newCommandSock);
+        close(newReadSock);
+        close(newWriteSock);
         throw ServerConnectionError();
     }
-    authenticate(writeSock, username);
-    setWriteConnection(writeSock);
-}
 
-void Connection::undoServerConnection() {
-    if (heartbeatSock != -1)
-        close(heartbeatSock);
+    authenticate(newHeartbeatSock, username);
+    setHeartbeatConnection(newHeartbeatSock);
 
-    if (commandSock != -1)
-        close(commandSock);
+    authenticate(newCommandSock, username);
 
-    if (readSock != -1)
-        close(readSock);
+    authenticate(newReadSock, username);
+    setReadConnection(newReadSock);
 
-    if (writeSock != -1)
-        close(writeSock);
+    authenticate(newWriteSock, username);
+    setWriteConnection(newWriteSock);
 
-    heartbeatSock = -1;
-    commandSock = -1;
-    readSock = -1;
-    writeSock = -1;
-    deviceId = -1;
+    heartbeatSock = newHeartbeatSock;
+    commandSock = newCommandSock;
+    readSock = newReadSock;
+    writeSock = newWriteSock;
 }
 
 bool Connection::hearsHeartbeat(int timeout) {
     try {
-        if (heartbeatSock == -1)
+        if (heartbeatSock == -1) {
             return false;
+        }
 
         waitHeartbeat(heartbeatSock, timeout);
     } catch (...) {
@@ -116,6 +119,11 @@ bool Connection::hearsHeartbeat(int timeout) {
     }
 
     return true;
+}
+
+void Connection::setHeartbeatConnection(int socket) {
+    sendMessage(socket, MsgType::MSG_HEARTBEAT, nullptr, 0);
+    waitConfirmation(socket);
 }
 
 int Connection::createSocket(in_addr_t &ip, in_port_t &port) {
@@ -156,12 +164,9 @@ void Connection::setWriteConnection(int &socketDescr) {
     waitConfirmation(socketDescr);
 }
 
-void Connection::setReadConnection() {
-    if (readSock == -1)
-        throw ServerConnectionError();
-
-    sendMessage(readSock, MsgType::MSG_SYNC_SERVER_TO_CLIENT, nullptr, 0);
-    waitConfirmation(readSock);
+void Connection::setReadConnection(int socket) {
+    sendMessage(socket, MsgType::MSG_SYNC_SERVER_TO_CLIENT, nullptr, 0);
+    waitConfirmation(socket);
 }
 
 void Connection::upload(std::filesystem::path filepath) {
