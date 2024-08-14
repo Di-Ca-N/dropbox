@@ -43,14 +43,13 @@ void CLI::run(std::string username, std::string ip, int port) {
 void CLI::makeConnection(std::string username, std::string ip, int port) {
     connection = std::make_shared<Connection>(Connection());
     
-    while (true) {
-        try {
-            connection->connectToService(username, ip, port);
-        } catch (BinderConnectionError) {
-            continue;
-        } catch (...) {}
-
-        break;
+    try {
+        connection->connectToService(username, ip, port);
+    } catch (BinderConnectionError) {
+        std::cout << "Error when connecting to binder\n";
+        exit(1);
+    } catch (...) {
+        std::cout << "Error when establishing first connection\n";
     }
 }
 
@@ -107,8 +106,8 @@ void CLI::initializeSyncDir() {
         std::cout << "Service is offline. Please, try again later.\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response\n";
+    } catch (UnexpectedMsgType e) {
+        std::cout << "Unexpected response 1" << e.what() << "\n";
     }
 }
 
@@ -131,8 +130,8 @@ void CLI::parseCommand(bool &newLine) {
         std::cout << "Service is offline. Please, try again later.\n";
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected response\n";
+    } catch (UnexpectedMsgType e) {
+        std::cout << "Unexpected response 2" << e.what() << "\n";
     }
 }
 

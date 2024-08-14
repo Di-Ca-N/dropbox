@@ -22,9 +22,9 @@ void HeartbeatMonitor::run() {
                 // Não faz nada
             } catch (ErrorReply e) {
                 std::cout << "Error: " << e.what() << "\n";
-            } catch (UnexpectedMsgType) {
-                std::cout << "Unexpected response\n";
-            } catch (BrokenPipe) {}
+            } catch (UnexpectedMsgType e) {
+                std::cout << "Unexpected response 4" << e.what() << "\n";
+            } catch (...) {}
         }
     }
 }

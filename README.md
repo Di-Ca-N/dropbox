@@ -1,8 +1,42 @@
 # Dropbox
-Sistema simples de sincronização de arquivos.
+Sistema simples de sincronização de arquivos desenvolvido para a cadeira Sistemas Operacionais II.
 
-## Sincronização
-![Protocolo DropBox-Definição Protocolo drawio (1)](https://github.com/Di-Ca-N/dropbox/assets/19980754/8fc00f73-0cc7-4353-905c-2605bd86ebd9)
+O sistema suporta sincronização de arquivos entre dispositivos de usuários diferentes, e implementa mecanismos de replicação
+passiva e algoritmo de eleição em anel para suportar falhas do servidor primário.
 
-## Relatório
-[Clique aqui](https://www.overleaf.com/project/66796db280c5f4358b640353) para acessar ao relatório no Overleaf.
+## Compilação
+Para compilar o programa, rode os seguintes comandos
+
+```
+mkdir build
+cd build
+cmake ..
+make
+```
+
+Os binários compilados estarão na pasta `/bin`.
+
+## Modo de uso
+Primeiro, inicie o nameserver com o comando a seguir 
+
+```
+binding-agent <port-client> <port-server>
+```
+
+Depois, inicie o servidor primário
+
+```
+server <port> <ns-ip> <ns-server-port>
+```
+
+E então as réplicas
+```
+server <port> <ns-ip> <ns-server-port> <primary-ip> <primary-port> <id>
+```
+
+Por fim, você pode inicializar os clientes:
+```
+client <username> <ns-ip> <ns-client-port>
+```
+
+

@@ -30,7 +30,7 @@ class TooManyDevices : public std::exception {
 class DeviceManager {
     private:
         int deviceId = 1; // Next deviceId to be assigned. Must start at 1.
-        int maxDevices; // Maximum number of devices that can be connected at the same time. Set to -1 to disable the limit
+        int maxDevices = -1; // Maximum number of devices that can be connected at the same time. Set to -1 to disable the limit
         std::string username;
         std::map<int, Device> devices;
         std::mutex mutex;   

@@ -4,10 +4,11 @@
 #include <filesystem>
 #include <iostream>
 
-UploadHandler::UploadHandler(std::string username, int clientSocket, DeviceManager *deviceManager) {
+UploadHandler::UploadHandler(std::string username, int clientSocket, DeviceManager *deviceManager, ReplicaManager *replicaManager) {
     this->clientSocket = clientSocket;
     this->username = username;
     this->deviceManager = deviceManager;
+    this->replicaManager = replicaManager;
 }
 
 void UploadHandler::run(){
@@ -29,9 +30,9 @@ void UploadHandler::run(){
         }
 
         receiveFileData(clientSocket, fileId.totalBlocks, file);
-
-        sendOk(clientSocket);
         
+        file.flush(); // Ensure the entire file is written to disk before synchronization
+
         FileOperation op = {
             .type=FileOpType::FILE_MODIFY,
         };
@@ -39,8 +40,9 @@ void UploadHandler::run(){
         filename.copy(op.filename, MAX_FILENAME);
         op.filenameSize = fileId.filenameSize;
 
+        replicaManager->notifyAllReplicas(op, username);
+        sendOk(clientSocket);
         deviceManager->notifyAllDevices(op);
-
     } catch (UnexpectedMsgType) {
         sendError(clientSocket, "Unexpected message");
     }

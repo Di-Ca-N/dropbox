@@ -10,7 +10,7 @@ extern ServerRegistry registry;
 
 void respondToServiceDiscovery(int socket);
 
-void handleClientConnection(int socket) {
+void handleClientConnection(int socket, sockaddr_in clientSockAddr) {
     try {
         while (true) {
             Message msg = receiveMessage(socket);

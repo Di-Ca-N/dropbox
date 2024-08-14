@@ -11,13 +11,18 @@
 #define MAX_PAYLOAD 512
 #define MAX_FILENAME 256
 #define MAX_USERNAME 256
+#define MAX_DIRNAME 256
 
 /* ====== DATA DEFINITIONS ====== */
 
 enum class MsgType : u_int8_t {
     MSG_AUTH,
+    MSG_BALLOT,
     MSG_DELETE,
+    MSG_DIR_NAME,
     MSG_DOWNLOAD,
+    MSG_ELECTED,
+    MSG_ELECTION,
     MSG_ERROR,
     MSG_FILEPART,
     MSG_FILE_ID,
@@ -27,11 +32,17 @@ enum class MsgType : u_int8_t {
     MSG_LIST_SERVER,
     MSG_NUM_FILES,
     MSG_OK,
+    MSG_REPLICA_DATA,
+    MSG_REPLICA_ID,
+    MSG_REPLICA_SYNC,
+    MSG_REPLICATION,
     MSG_SERVER_ADDRESS,
+    MSG_SERVICE_STATUS,
     MSG_STATUS_INQUIRY,
     MSG_SYNC_CLIENT_TO_SERVER,
     MSG_SYNC_SERVER_TO_CLIENT,
     MSG_UPLOAD,
+    MSG_UPDATE_TYPE,
 };
 
 // Helper function to get a string representation of MsgType
@@ -63,7 +74,15 @@ typedef struct {
 } FileOperation;
 
 // Struct to transfer file metadata
-typedef struct {
+typedef struct {        // switch (op.type) {
+        //     case FileOpType::FILE_DELETE:
+        //         break;
+        //     case FileOpType::FILE_MODIFY:
+        //         handleFileModify(replicaSock, fileName, username);
+        //         break;
+        //     default:
+        //         break;
+        // }
     char filename[MAX_FILENAME];
     time_t mTime;
     time_t aTime;
@@ -83,6 +102,9 @@ typedef struct {
     in_port_t port;
 } ServerAddress;
 
+bool operator==(ServerAddress addr1, ServerAddress addr2);
+std::ostream& operator<<(std::ostream& os, const ServerAddress& addr);
+
 // === Authentication related data types ===
 
 // Indicates the source of the authentication request
@@ -99,7 +121,7 @@ typedef struct {
 // Contains data required for replica authentication. The field ipAddress may be empty
 // and the server will reply with the IP used for the connection.
 typedef struct {
-    uint32_t ipAddress;
+    ServerAddress replicaAddr;
     int replicaId;
 } ReplicaAuthData;
 
@@ -113,6 +135,24 @@ typedef struct {
        ReplicaAuthData replicaData;
     };
 } AuthData;
+
+enum class UpdateType : uint8_t { UPDATE_CONNECTION, UPDATE_FILE_OP, UPDATE_CONNECTION_START, UPDATE_CONNECTION_END };
+
+typedef struct {
+    int replicaId;
+    ServerAddress replicaAddr;
+    int socketDescr;
+} ReplicaData;
+
+typedef struct {
+    ServerAddress address;
+    int id;
+} Ballot;
+
+typedef struct {
+    char dirName[MAX_DIRNAME];
+    uint8_t dirnameLen;
+} DirData;
 
 /* =========== HIGH-LEVEL API ============= */
 /* This high-level API provide utility functions for sending and receiving each data 
@@ -142,6 +182,17 @@ void sendServerAddress(int sock_fd, ServerAddress address);
 ServerAddress receiveServerAddress(int sock_fd);
 void sendHeartbeat(int sock_fd);
 void waitHeartbeat(int sock_fd, int maxTimeout);
+void sendUpdateType(int sock_fd, UpdateType updateType);
+UpdateType receiveUpdateType(int sock_fd);
+void sendReplicaData(int sock_fd, ReplicaData replicaData);
+ReplicaData receiveReplicaData(int sock_fd);
+void sendReplicaId(int sock_fd, int replicaId);
+int receiveReplicaId(int sock_fd);
+void sendBallot(int sock_fd, Ballot ballot);
+Ballot receiveBallot(int sock_fd);
+void sendDirName(int sock_fd, DirData dirData);
+DirData receiveDirName(int sock_fd);
+
 
 /* =========== LOW-LEVEL API ============= */
 /* This is the low-level API of our protocol, dealing directly with sending and receiving 

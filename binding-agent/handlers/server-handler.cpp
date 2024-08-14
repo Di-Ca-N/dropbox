@@ -6,31 +6,22 @@
 
 extern ServerRegistry registry;
 
-void sendServerRegistry(int socket);
+void handleServerConnection(int socket, sockaddr_in serverSockAddr) {
+    std::cout << "chegou aqui\n";
+    ServerAddress address;
 
-void handleServerConnection(int socket) {
     try {
-        Message msg = receiveMessage(socket);
-
-        if (msg.type == MsgType::MSG_SERVER_ADDRESS) { 
-            sendOk(socket);
-            sendServerRegistry(socket);            
-        } else {
-            sendError(socket, "Unrecognized protocol");
-        }
-    } catch (BrokenPipe) {
-        std::cerr << "Server has disconnected\n";
-    }
-}
-
-void sendServerRegistry(int socket) {
-    try {
-        ServerAddress address = receiveServerAddress(socket);
+        address = receiveServerAddress(socket);
+        address.ip = serverSockAddr.sin_addr.s_addr;
         sendOk(socket);
         registry.setLastServerAddress(address);
-    } catch (UnexpectedMsgType) {
-        std::cout << "Unexpected message\n";
-    } catch (ErrorReply e) {
-        std::cout << e.what() << "\n";
+    } catch (BrokenPipe) {
+        std::cerr << "Server has disconnected\n";
+    } catch (UnexpectedMsgType &e) {
+        std::cerr << e.what() << "\n";
     }
+
+    std::cout << "New Primary: " << address << "\n";
+    std::cout << "Server has disconnected\n";
 }
+

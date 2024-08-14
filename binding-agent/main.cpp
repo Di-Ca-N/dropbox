@@ -17,7 +17,7 @@
 
 int convertCharArrayToPort(char *array);
 
-void acceptConnections(int port, void (*handler)(int));
+void acceptConnections(int port, void (*handler)(int, sockaddr_in));
 int createSocket(int port);
 
 ServerRegistry registry;
@@ -53,14 +53,16 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-void acceptConnections(int port, void (*handler)(int)) {
+void acceptConnections(int port, void (*handler)(int, sockaddr_in)) {
     int socketDescriptor = createSocket(port);
     std::vector<std::thread> connections;
 
     while (true) {
-        int remoteDescriptor = accept(socketDescriptor, nullptr, nullptr);
+        sockaddr_in remoteAddr;
+        socklen_t remoteAddrSize = sizeof(remoteAddr);
+        int remoteDescriptor = accept(socketDescriptor, (sockaddr*)&remoteAddr, &remoteAddrSize);
         std::cout << "Accepted connection on port " << port << "\n";
-        connections.push_back(std::thread(handler, remoteDescriptor));
+        connections.push_back(std::thread(handler, remoteDescriptor, remoteAddr));
     }
 
     for (auto &connection : connections) {

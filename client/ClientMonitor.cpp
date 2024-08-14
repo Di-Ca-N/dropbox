@@ -43,12 +43,14 @@ void ClientMonitor::run(std::string sync_dir) {
         bytesRead = read(inotifyFd, buffer, EVENT_BUF_LEN); 
         processEventBuffer(buffer, bytesRead);
         try {
-            sendOperationIfNotDuplicated(queue.front());
-            queue.pop();
+            if (!queue.empty()) {
+                sendOperationIfNotDuplicated(queue.front());
+                queue.pop();
+            }
         } catch (ErrorReply e) {
             std::cout << "Error: " << e.what() << "\n";
-        } catch (UnexpectedMsgType) {
-            std::cout << "Unexpected response\n";
+        } catch (UnexpectedMsgType e) {
+            std::cout << "Unexpected response 3" << e.what() << "\n";
         } catch (BrokenPipe) {
             // Não faz nada
         } catch (ServerConnectionError) {

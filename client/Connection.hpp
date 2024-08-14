@@ -25,7 +25,6 @@ private:
 
     void connectToBinder(in_addr_t &ip, in_port_t &port);
     void connectToServer(in_addr_t &ip, in_port_t &port);
-    void undoServerConnection();
 
     int createSocket(in_addr_t &ip, in_port_t &port);
     void authenticate(int &socketDescr, std::string username);
@@ -33,11 +32,13 @@ private:
     void sendChange(std::filesystem::path target);
     void sendDelete(std::filesystem::path target);
 
-    void setReadConnection();
+    void setReadConnection(int socket);
     std::optional<FileOperation> syncProcessRead();
     void syncReadChange(FileId &fileId);
     void syncReadDelete(FileId &fileId);
     FileOperation makeFileOperation(FileId &fileId, FileOpType &fileOpType);
+
+    void setHeartbeatConnection(int socket);
 
 public:
     void connectToService(std::string username, std::string ip, int port);

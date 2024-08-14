@@ -2,6 +2,7 @@
 
 #include <sys/socket.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 #include <cstring>
 #include <iostream>
@@ -9,8 +10,12 @@
 
 std::map<MsgType, std::string> msgTypeNames = {
     {MsgType::MSG_AUTH, "MSG_AUTH"},
+    {MsgType::MSG_BALLOT, "MSG_BALLOT"},
     {MsgType::MSG_DELETE, "MSG_DELETE"},
+    {MsgType::MSG_DIR_NAME, "MSG_DIR_NAME"},
     {MsgType::MSG_DOWNLOAD, "MSG_DOWNLOAD"},
+    {MsgType::MSG_ELECTED, "MSG_ELECTED"},
+    {MsgType::MSG_ELECTION, "MSG_ELECTION"},
     {MsgType::MSG_ERROR, "MSG_ERROR"},
     {MsgType::MSG_FILEPART, "MSG_FILEPART"},
     {MsgType::MSG_FILE_ID, "MSG_FILE_ID"},
@@ -20,14 +25,31 @@ std::map<MsgType, std::string> msgTypeNames = {
     {MsgType::MSG_LIST_SERVER, "MSG_LIST_SERVER"},
     {MsgType::MSG_NUM_FILES, "MSG_NUM_FILES"},
     {MsgType::MSG_OK, "MSG_OK"},
+    {MsgType::MSG_REPLICA_DATA, "MSG_REPLICA_DATA"},
+    {MsgType::MSG_REPLICA_ID, "MSG_REPLICA_ID"},
+    {MsgType::MSG_REPLICA_SYNC, "MSG_REPLICA_SYNC"},
+    {MsgType::MSG_REPLICATION, "MSG_REPLICATION"},
     {MsgType::MSG_SERVER_ADDRESS, "MSG_SERVER_ADDRESS"},
+    {MsgType::MSG_SERVICE_STATUS, "MSG_SERVICE_STATUS"},
     {MsgType::MSG_STATUS_INQUIRY, "MSG_STATUS_INQUIRY"},
     {MsgType::MSG_SYNC_CLIENT_TO_SERVER, "MSG_SYNC_CLIENT_TO_SERVER"},
     {MsgType::MSG_SYNC_SERVER_TO_CLIENT, "MSG_SYNC_SERVER_TO_CLIENT"},
-    {MsgType::MSG_UPLOAD, "MSG_UPLOAD"}
+    {MsgType::MSG_UPLOAD, "MSG_UPLOAD"},
+    {MsgType::MSG_UPDATE_TYPE, "MSG_UPDATE_TYPE"},
 };
 
 std::string toString(MsgType type) { return msgTypeNames[type]; }
+
+bool operator==(ServerAddress addr1, ServerAddress addr2) {
+    return addr1.ip == addr2.ip && addr1.port == addr2.port;
+}
+
+std::ostream &operator<<(std::ostream &os, const ServerAddress &addr) {
+    char ipString[16];
+    inet_ntop(AF_INET, &addr.ip, ipString, 16);
+    os << ipString << ":" << ntohs(addr.port);
+    return os;
+}
 
 Message receiveMessage(int sock_fd) {
     char buffer[sizeof(Message)];
@@ -113,8 +135,6 @@ void sendError(int sock_fd, std::string errorMsg) {
 
 void waitConfirmation(int sock_fd) {
     Message msg = receiveMessage(sock_fd);
-
-    // printMsg(&msg);
 
     if (msg.type != MsgType::MSG_OK) {
         if (msg.type == MsgType::MSG_ERROR) {
@@ -222,3 +242,43 @@ void waitHeartbeat(int sock_fd, int maxTimeout) {
         default: throw UnexpectedMsgType(MsgType::MSG_HEARTBEAT, msg.type);
     }
 }
+
+void sendUpdateType(int sock_fd, UpdateType updateType) {
+    sendMessage(sock_fd, MsgType::MSG_UPDATE_TYPE, &updateType, sizeof(updateType));
+}
+
+UpdateType receiveUpdateType(int sock_fd) {
+    return receivePayload<UpdateType>(sock_fd, MsgType::MSG_UPDATE_TYPE);
+}
+
+void sendReplicaData(int sock_fd, ReplicaData replicaData) {
+    sendMessage(sock_fd, MsgType::MSG_REPLICA_DATA, &replicaData, sizeof(replicaData));
+}
+
+ReplicaData receiveReplicaData(int sock_fd) {
+    return receivePayload<ReplicaData>(sock_fd, MsgType::MSG_REPLICA_DATA);
+}
+
+void sendBallot(int sock_fd, Ballot ballot) {
+    sendMessage(sock_fd, MsgType::MSG_BALLOT, &ballot, sizeof(ballot));
+}
+
+Ballot receiveBallot(int sock_fd) {
+    return receivePayload<Ballot>(sock_fd, MsgType::MSG_BALLOT);
+}
+void sendReplicaId(int sock_fd, int replicaId) {
+    sendMessage(sock_fd, MsgType::MSG_REPLICA_ID, &replicaId, sizeof(replicaId));
+}
+
+int receiveReplicaId(int sock_fd) {
+    return receivePayload<int>(sock_fd, MsgType::MSG_REPLICA_ID);
+}
+
+void sendDirName(int sock_fd, DirData dirName) {
+    sendMessage(sock_fd, MsgType::MSG_DIR_NAME, &dirName, sizeof(dirName));
+}
+
+DirData receiveDirName(int sock_fd) {
+    return receivePayload<DirData>(sock_fd, MsgType::MSG_DIR_NAME);
+}
+
