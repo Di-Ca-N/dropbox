@@ -1,6 +1,7 @@
 #include "ElectionHandler.hpp"
 
 #include <iostream>
+#include <thread>
 
 #include "Messages.hpp"
 #include "utils.hpp"
@@ -34,14 +35,19 @@ void ElectionHandler::run() {
         receiveAuth(nextServer);
 
         if (this->myId == ballot.id) { // Ballot came back. I'm the new leader
-            std::cout << "Sending elected\n";
+            if (electionManager->getLeader() == myId) return;
+    
+            std::cout << "I am the new leader\n";
+            electionManager->setLeader(myId, myId, replicaManager->getAddress());
+            replicaManager->clearReplicas();
+            electionManager->finishElection();
+
             sendMessage(nextServer, MsgType::MSG_ELECTED, nullptr, 0);
             waitConfirmation(nextServer);
             sendBallot(nextServer, ballot);
             waitConfirmation(nextServer);
             // Set Leader
         } else if (this->myId > ballot.id) {
-            std::cout << "Forwarding ballot\n";
             ballot.id = myId;
             ballot.address = replicaManager->getAddress();
             sendMessage(nextServer, MsgType::MSG_ELECTION, nullptr, 0);

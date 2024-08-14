@@ -27,6 +27,7 @@ void ElectionManager::setLeader(int myId, int leaderId, ServerAddress leaderAddr
 
 void ElectionManager::finishElection() {
     std::lock_guard<std::mutex> lock(mutex);
+    std::cout << "Election ended\n";
     candidate = false;
     electionRunning.notify_one();
 }

@@ -2,6 +2,7 @@
 #include <iostream>
 #include "Messages.hpp"
 #include "utils.hpp"
+#include <thread>
 
 ElectedHandler::ElectedHandler(int replicaSocket, int myId, ReplicaManager *replicaManager, ElectionManager *manager) {
     this->replicaSocket = replicaSocket;
@@ -19,9 +20,9 @@ void ElectedHandler::run() {
         if (ballot.id == electionManager->getLeader()) return;
 
         std::cout << "Elected leader with id " << ballot.id << std::endl;
-        electionManager->setLeader(id, ballot.id, ballot.address);
 
         if (ballot.id != this->id) {
+            electionManager->setLeader(id, ballot.id, ballot.address);
             ServerAddress nextServerAddr = replicaManager->getNextReplica();
             int nextServer = openSocketTo(nextServerAddr);
             if (nextServer == -1) {
@@ -39,8 +40,9 @@ void ElectedHandler::run() {
 
             sendBallot(nextServer, ballot);
             waitConfirmation(nextServer);
+            replicaManager->clearReplicas();
+            electionManager->finishElection();
         }
-        electionManager->finishElection();
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";
     } catch (UnexpectedMsgType e) {
