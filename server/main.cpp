@@ -178,6 +178,7 @@ void handleConnection(int remoteSocket, sockaddr_in remoteAddr) {
 
 
 void startReplicationThread(ServerAddress primaryAddr, uint16_t port){
+    replicaManager.clearReplicas();
     ReplicaThread replicaThread;
     replicaThread.run(&replicaManager, myId, port, primaryAddr);
 }
@@ -251,6 +252,8 @@ void electionMonitor(ServerAddress primaryAddr, uint16_t port) {
         if (electionManager->getLeader() != myId) {
             std::cout << "Connecting to the new leader\n";
             startReplicationThread(electionManager->getLeaderAddress(), port);
+        } else {
+            replicaManager.clearReplicas();
         }
     }
 }

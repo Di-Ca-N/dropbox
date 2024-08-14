@@ -14,11 +14,11 @@ void ElectedHandler::run() {
     try {
         sendOk(replicaSocket);
         Ballot ballot = receiveBallot(replicaSocket);
-        std::cout << "Elected leader with id " << ballot.id << std::endl;
         sendOk(replicaSocket);
 
         if (ballot.id == electionManager->getLeader()) return;
 
+        std::cout << "Elected leader with id " << ballot.id << std::endl;
         electionManager->setLeader(id, ballot.id, ballot.address);
 
         if (ballot.id != this->id) {
@@ -39,10 +39,7 @@ void ElectedHandler::run() {
 
             sendBallot(nextServer, ballot);
             waitConfirmation(nextServer);
-
-            electionManager->finishElection();
         }
-        replicaManager->clearReplicas();
         electionManager->finishElection();
     } catch (ErrorReply e) {
         std::cout << "Error: " << e.what() << "\n";

@@ -87,7 +87,6 @@ void ReplicaManager::removeReplica(int replicaId, UpdateType updateType) {
 }
 
 void ReplicaManager::sendReplica(int socketDescr, int replicaId) {
-    std::lock_guard<std::mutex> lock(mutex);
     replicaData.replicaId = replicaId;
     replicaData.replicaAddr = replicas[replicaId].replicaAddr;    
     replicaData.socketDescr = replicas[replicaId].socketDescr;
